@@ -1,0 +1,35 @@
+# --- Environnement Python ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# --- Build / livrables (régénérés par scripts/build.py) ---
+build/
+dist/
+livraison/
+*.spec
+
+# --- Données utilisateur locales (chemins personnels, mods, config) ---
+data/
+Mods/
+
+# --- Artefacts de test générés par l'application ---
+tests/sandbox/data/
+tests/sandbox/Mods/
+.mod_manager/
+*.org
+
+# --- IDE / éditeurs ---
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# --- Divers ---
+.env
+.DS_Store
+Thumbs.db
+*.log
