@@ -77,6 +77,9 @@ Cliquez sur **🧹 PURGER (JEU D'ORIGINE)** puis confirmez. Tous les fichiers in
 - **Windows uniquement.**
 - **ModInjector et le jeu doivent être sur le même disque** (même lettre de lecteur), car les hard links ne fonctionnent pas entre disques. Sinon, déplacez le dossier ModInjector sur le disque du jeu.
 - Si un hard link échoue, ModInjector se rabat automatiquement sur une copie classique.
+- Un fichier injecté par hard link **est** le fichier du mod : si le jeu le modifie sur place, le mod est modifié aussi. ModInjector le signale lors de la purge ; réinstallez alors le mod concerné. Un fichier **remplacé** par une mise à jour du jeu est, lui, détecté et conservé lors de la purge.
+- **Fermez le jeu avant de déployer ou de purger** : un fichier utilisé par le jeu ne peut pas être supprimé. La purge est alors partielle, ModInjector garde la liste de ce qui reste à faire et il suffit de relancer la purge.
+- Si le dernier déploiement a été interrompu (plantage, coupure de courant), un avertissement s'affiche : lancez une purge puis redéployez.
 - Pensez à **purger le jeu avant de supprimer un jeu** de ModInjector ou de désinstaller le jeu.
 - Les jeux protégés par un anti-triche peuvent refuser les fichiers modifiés : utilisez ModInjector à vos risques.
 
@@ -89,7 +92,7 @@ Dans les dossiers `Mods/` et `data/config.json` situés à côté de `ModInjecto
 Le jeu et vos mods ne sont pas supprimés, seulement retirés de la configuration. Purgez d'abord si des mods sont encore déployés.
 
 **J'ai un fichier `.org` dans mon jeu, c'est normal ?**
-Oui : c'est la sauvegarde d'un fichier original remplacé par un mod. Il est renommé à son nom d'origine lors de la purge.
+Oui : c'est la sauvegarde d'un fichier original remplacé par un mod. Il est renommé à son nom d'origine lors de la purge. Si un fichier `.org` existe déjà, la sauvegarde est nommée `.1.org`, `.2.org`… : une sauvegarde n'est jamais écrasée. Un `.org` peut rester après la purge si le jeu a entre-temps installé une version plus récente du fichier : c'est l'ancien original, vous pouvez le supprimer.
 
 ## 🛠️ Pour les développeurs
 
@@ -101,6 +104,8 @@ Lancement rapide depuis les sources (nécessite [uv](https://docs.astral.sh/uv/)
 uv sync
 uv run python src/modinjector/main.py
 ```
+
+Tests automatisés : `uv run pytest`.
 
 ## 📄 Licence
 

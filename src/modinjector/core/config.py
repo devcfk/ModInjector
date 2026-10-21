@@ -2,7 +2,10 @@ import json
 import re
 import shutil
 import sys
+import time
 from pathlib import Path
+
+from core.fsutils import write_json_atomic
 
 if getattr(sys, "frozen", False):
     APP_DIR = Path(sys.executable).parent
@@ -39,45 +42,58 @@ class ConfigManager:
         self.mods_root = mods_root
         self.jeux: list[dict] = []
         self.jeu_actif_nom: str = ""
+        self.erreur_chargement: str | None = None  # renseigné si config.json était illisible
         self.load()
 
     # --- Persistance ---
     def load(self) -> None:
         self.jeux = []
         self.jeu_actif_nom = ""
+        self.erreur_chargement = None
         if not self.config_file.exists():
             return
         try:
             with open(self.config_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
-        except Exception as e:
-            print(f"Erreur lors du chargement de la config: {e}")
+            if not isinstance(data, dict):
+                raise ValueError("format inattendu")
+            if "jeux" in data:
+                self.jeux = [
+                    {
+                        "nom": str(j.get("nom", "")),
+                        "dossier": str(j.get("dossier", "")),
+                        "load_order": [str(m) for m in j.get("load_order", [])],
+                    }
+                    for j in data["jeux"]
+                    if isinstance(j, dict) and j.get("nom")
+                ]
+                self.jeu_actif_nom = str(data.get("jeu_actif", ""))
+            elif data.get("dossier_jeu"):
+                self._migrer_ancien_format(data)
+        except (OSError, ValueError, TypeError, AttributeError) as e:
+            self._mettre_de_cote_config_illisible(e)
             return
-
-        if "jeux" in data:
-            self.jeux = [
-                {
-                    "nom": j.get("nom", ""),
-                    "dossier": j.get("dossier", ""),
-                    "load_order": list(j.get("load_order", [])),
-                }
-                for j in data["jeux"]
-                if j.get("nom")
-            ]
-            self.jeu_actif_nom = data.get("jeu_actif", "")
-        elif data.get("dossier_jeu"):
-            self._migrer_ancien_format(data)
 
         if self.jeux and not self.get_jeu(self.jeu_actif_nom):
             self.jeu_actif_nom = self.jeux[0]["nom"]
 
+    def _mettre_de_cote_config_illisible(self, erreur: Exception) -> None:
+        """Conserve une copie du fichier illisible pour qu'il ne soit pas écrasé à la prochaine sauvegarde."""
+        self.jeux, self.jeu_actif_nom = [], ""
+        copie = self.config_file.with_name(f"{self.config_file.stem}.corrompu-{time.strftime('%Y%m%d-%H%M%S')}.json")
+        try:
+            self.config_file.replace(copie)
+            self.erreur_chargement = (f"La configuration était illisible ({erreur}).\n"
+                                      f"Elle a été mise de côté dans :\n{copie}")
+        except OSError:
+            self.erreur_chargement = f"La configuration est illisible ({erreur})."
+        print(self.erreur_chargement)
+
     def save(self) -> None:
-        self.config_file.parent.mkdir(parents=True, exist_ok=True)
         data = {"jeux": self.jeux, "jeu_actif": self.jeu_actif_nom}
         try:
-            with open(self.config_file, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=4, ensure_ascii=False)
-        except Exception as e:
+            write_json_atomic(self.config_file, data)
+        except OSError as e:
             print(f"Erreur lors de la sauvegarde: {e}")
 
     def _migrer_ancien_format(self, data: dict) -> None:

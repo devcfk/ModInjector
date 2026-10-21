@@ -1,4 +1,6 @@
 import os
+import queue
+import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox
@@ -6,10 +8,12 @@ from tkinter import messagebox
 import customtkinter as ctk
 
 from core.config import ConfigManager
-from core.deployer import deploy_mods, purge_mods, get_deployed_mods
+from core.deployer import deploy_mods, purge_mods, get_deployed_mods, is_deploy_interrupted
 
 POLL_INTERVAL_MS = 2000
+LOG_INTERVAL_MS = 100
 AUCUN_JEU = "Aucun jeu"
+_FIN_TACHE = object()  # marqueur de fin d'opération dans la file des logs
 
 
 class ModsTab(ctk.CTkFrame):
@@ -22,6 +26,9 @@ class ModsTab(ctk.CTkFrame):
         self.load_order: list[str] = []
         self.available_mods: list[str] = []
         self._snapshot = None
+        self.busy = False  # vrai pendant un déploiement / une purge (exécutés dans un thread)
+        self._log_queue: queue.Queue = queue.Queue()
+        self._action_widgets: list = []
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)  # zone des mods
@@ -42,8 +49,10 @@ class ModsTab(ctk.CTkFrame):
         self.combo_jeu = ctk.CTkComboBox(top, variable=self.game_var, values=[AUCUN_JEU],
                                          state="readonly", command=self.on_game_selected)
         self.combo_jeu.grid(row=0, column=1, padx=5, pady=10, sticky="ew")
-        ctk.CTkButton(top, text="🔄 Rafraîchir", width=110, command=self.refresh).grid(row=0, column=2, padx=5, pady=10)
+        btn_refresh = ctk.CTkButton(top, text="🔄 Rafraîchir", width=110, command=self.refresh)
+        btn_refresh.grid(row=0, column=2, padx=5, pady=10)
         ctk.CTkButton(top, text="📂 Ouvrir Mods", width=110, command=self.open_mods_folder).grid(row=0, column=3, padx=(5, 10), pady=10)
+        self._action_widgets += [self.combo_jeu, btn_refresh]
 
         # --- Gestion du Load Order ---
         frame_mods = ctk.CTkFrame(self)
@@ -58,9 +67,11 @@ class ModsTab(ctk.CTkFrame):
 
         frame_transfer = ctk.CTkFrame(frame_mods, fg_color="transparent")
         frame_transfer.grid(row=1, column=1, padx=5)
-        ctk.CTkButton(frame_transfer, text="Activer ►", width=90, command=self.activate_mod).pack(pady=5)
-        ctk.CTkButton(frame_transfer, text="◄ Retirer", width=90, command=self.deactivate_mod,
-                      fg_color="#7A3636", hover_color="#592525").pack(pady=5)
+        btn_activer = ctk.CTkButton(frame_transfer, text="Activer ►", width=90, command=self.activate_mod)
+        btn_activer.pack(pady=5)
+        btn_retirer = ctk.CTkButton(frame_transfer, text="◄ Retirer", width=90, command=self.deactivate_mod,
+                                    fg_color="#7A3636", hover_color="#592525")
+        btn_retirer.pack(pady=5)
 
         ctk.CTkLabel(frame_mods, text="Ordre de Déploiement (Plus bas = Prioritaire)",
                      font=ctk.CTkFont(weight="bold")).grid(row=0, column=2, pady=(10, 5))
@@ -69,19 +80,24 @@ class ModsTab(ctk.CTkFrame):
 
         frame_order = ctk.CTkFrame(frame_mods, fg_color="transparent")
         frame_order.grid(row=1, column=3, padx=(0, 15))
-        ctk.CTkButton(frame_order, text="▲ Monter", width=70, command=self.move_up).pack(pady=5)
-        ctk.CTkButton(frame_order, text="▼ Descendre", width=70, command=self.move_down).pack(pady=5)
+        btn_monter = ctk.CTkButton(frame_order, text="▲ Monter", width=70, command=self.move_up)
+        btn_monter.pack(pady=5)
+        btn_descendre = ctk.CTkButton(frame_order, text="▼ Descendre", width=70, command=self.move_down)
+        btn_descendre.pack(pady=5)
 
         # --- Actions principales ---
         frame_actions = ctk.CTkFrame(self)
         frame_actions.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
         frame_actions.grid_columnconfigure((0, 1), weight=1)
-        ctk.CTkButton(frame_actions, text="🚀 DÉPLOYER LES MODS", command=self.action_deploy,
-                      fg_color="#2FA572", hover_color="#106A43", height=45,
-                      font=ctk.CTkFont(weight="bold", size=14)).grid(row=0, column=0, padx=15, pady=15, sticky="ew")
-        ctk.CTkButton(frame_actions, text="🧹 PURGER (JEU D'ORIGINE)", command=self.action_purge,
-                      fg_color="#C22929", hover_color="#8F1515", height=45,
-                      font=ctk.CTkFont(weight="bold", size=14)).grid(row=0, column=1, padx=15, pady=15, sticky="ew")
+        btn_deploy = ctk.CTkButton(frame_actions, text="🚀 DÉPLOYER LES MODS", command=self.action_deploy,
+                                   fg_color="#2FA572", hover_color="#106A43", height=45,
+                                   font=ctk.CTkFont(weight="bold", size=14))
+        btn_deploy.grid(row=0, column=0, padx=15, pady=15, sticky="ew")
+        btn_purge = ctk.CTkButton(frame_actions, text="🧹 PURGER (JEU D'ORIGINE)", command=self.action_purge,
+                                  fg_color="#C22929", hover_color="#8F1515", height=45,
+                                  font=ctk.CTkFont(weight="bold", size=14))
+        btn_purge.grid(row=0, column=1, padx=15, pady=15, sticky="ew")
+        self._action_widgets += [btn_activer, btn_retirer, btn_monter, btn_descendre, btn_deploy, btn_purge]
 
         # --- Logs ---
         frame_logs = ctk.CTkFrame(self)
@@ -120,6 +136,8 @@ class ModsTab(ctk.CTkFrame):
 
     def refresh(self):
         """Recharge jeux, mods disponibles et état de déploiement."""
+        if self.busy:
+            return  # Rafraîchi automatiquement à la fin de l'opération en cours
         noms = self.cfg.noms_jeux()
         self.combo_jeu.configure(values=noms or [AUCUN_JEU])
         jeu = self._jeu()
@@ -147,8 +165,10 @@ class ModsTab(ctk.CTkFrame):
 
     def _poll(self):
         try:
-            if self._scan() != self._snapshot:
+            if not self.busy and self._scan() != self._snapshot:
                 self.refresh()
+        except OSError:
+            pass  # Dossier momentanément inaccessible : on réessaiera au prochain tour
         finally:
             self.after(POLL_INTERVAL_MS, self._poll)
 
@@ -170,9 +190,12 @@ class ModsTab(ctk.CTkFrame):
         self._update_status(deployed)
 
     def _update_status(self, deployed: list[str]):
-        if self._jeu() is None:
+        jeu = self._jeu()
+        if jeu is None:
             return
-        if not deployed:
+        if is_deploy_interrupted(Path(jeu["dossier"])):
+            texte = "⚠ Le dernier déploiement a été interrompu ou son état est illisible : lancez une purge puis redéployez."
+        elif not deployed:
             texte = "Aucun mod déployé. ⏳ = en liste de déploiement, en attente de déploiement."
         elif deployed == self.load_order:
             texte = f"✔ À jour : {len(deployed)} mod(s) déployé(s)."
@@ -236,11 +259,31 @@ class ModsTab(ctk.CTkFrame):
 
     # --------------------------------------------------------------- Logs
     def log(self, message: str = ""):
+        """Peut être appelé depuis n'importe quel thread : les messages passent par une file."""
+        self._log_queue.put(str(message))
+
+    def _write_log(self, message: str):
         self.log_textbox.configure(state="normal")
-        self.log_textbox.insert("end", str(message) + "\n")
+        self.log_textbox.insert("end", message + "\n")
         self.log_textbox.see("end")
         self.log_textbox.configure(state="disabled")
-        self.log_textbox.update()
+
+    def _drain_logs(self):
+        """Affiche les messages en attente (thread de l'UI) et détecte la fin de l'opération."""
+        termine = False
+        try:
+            while True:
+                message = self._log_queue.get_nowait()
+                if message is _FIN_TACHE:
+                    termine = True
+                    break
+                self._write_log(message)
+        except queue.Empty:
+            pass
+        if termine:
+            self._end_task()
+        else:
+            self.after(LOG_INTERVAL_MS, self._drain_logs)
 
     def log_clear(self):
         self.log_textbox.configure(state="normal")
@@ -248,7 +291,34 @@ class ModsTab(ctk.CTkFrame):
         self.log_textbox.configure(state="disabled")
 
     # ------------------------------------------------- Déploiement / Purge
+    def _run_task(self, titre: str, fonction):
+        """Exécute fonction() dans un thread pour ne pas figer l'interface, en bloquant les autres actions."""
+        self.busy = True
+        for widget in self._action_widgets:
+            widget.configure(state="disabled")
+        self.lbl_status.configure(text=f"⏳ {titre} en cours, veuillez patienter...")
+        self.log_clear()
+
+        def worker():
+            try:
+                fonction()
+            except Exception as e:
+                self.log(f"[ERREUR INATTENDUE] {e}")
+            finally:
+                self._log_queue.put(_FIN_TACHE)
+
+        threading.Thread(target=worker, name=titre, daemon=False).start()
+        self.after(LOG_INTERVAL_MS, self._drain_logs)
+
+    def _end_task(self):
+        self.busy = False
+        for widget in self._action_widgets:
+            widget.configure(state="readonly" if widget is self.combo_jeu else "normal")
+        self.refresh()
+
     def action_deploy(self):
+        if self.busy:
+            return
         jeu = self._jeu()
         if jeu is None:
             messagebox.showwarning("Erreur", "Veuillez configurer et sélectionner un jeu (onglet Paramètres).")
@@ -261,16 +331,18 @@ class ModsTab(ctk.CTkFrame):
             messagebox.showerror("Erreur", "Le dossier du jeu spécifié n'existe pas.")
             return
 
-        self.log_clear()
-        self.log("=== LANCEMENT DU DÉPLOIEMENT ===")
-        self.log(f"Jeu cible : {jeu['nom']} ({dossier_jeu})")
-        try:
-            deploy_mods(dossier_jeu, self._mods_dir(), self.load_order, logger=self.log)
-        except Exception as e:
-            self.log(f"[ERREUR INATTENDUE] {e}")
-        self.refresh()
+        mods_dir, load_order = self._mods_dir(), list(self.load_order)
+
+        def tache():
+            self.log("=== LANCEMENT DU DÉPLOIEMENT ===")
+            self.log(f"Jeu cible : {jeu['nom']} ({dossier_jeu})")
+            deploy_mods(dossier_jeu, mods_dir, load_order, logger=self.log)
+
+        self._run_task("Déploiement", tache)
 
     def action_purge(self):
+        if self.busy:
+            return
         jeu = self._jeu()
         if jeu is None:
             return
@@ -283,10 +355,8 @@ class ModsTab(ctk.CTkFrame):
                                    "et restaurer le jeu à son état d'origine ?"):
             return
 
-        self.log_clear()
-        self.log("=== LANCEMENT DE LA PURGE ===")
-        try:
+        def tache():
+            self.log("=== LANCEMENT DE LA PURGE ===")
             purge_mods(dossier_jeu, logger=self.log)
-        except Exception as e:
-            self.log(f"[ERREUR INATTENDUE] {e}")
-        self.refresh()
+
+        self._run_task("Purge", tache)

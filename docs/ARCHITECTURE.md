@@ -26,11 +26,15 @@ ModInjector/
 │   ├── version.py               # __version__
 │   ├── core/
 │   │   ├── config.py            # ConfigManager : jeux, load order, persistance
-│   │   └── deployer.py          # deploy_mods / purge_mods (logique d'injection)
+│   │   ├── deployer.py          # deploy_mods / purge_mods (logique d'injection)
+│   │   └── fsutils.py           # write_json_atomic (écriture JSON sans risque de troncature)
 │   └── views/
 │       ├── mods_tab.py          # Onglet Mods
 │       └── settings_tab.py      # Onglet Paramètres
-├── tests/sandbox/               # Jeux et mods factices pour tests manuels
+├── tests/
+│   ├── test_deployer.py         # Tests pytest du déploiement / de la purge
+│   ├── test_config.py           # Tests pytest de la configuration
+│   └── sandbox/                 # Jeux et mods factices pour tests manuels
 ├── pyproject.toml / uv.lock
 └── docs/ARCHITECTURE.md
 ```
@@ -62,7 +66,9 @@ flowchart TD
 - `gui.App` (`CTk`) : titre/icône, instancie `ConfigManager`, crée un `CTkTabview` avec les onglets **Mods** et **Paramètres**.
   - Si aucun jeu n'est configuré, l'onglet Paramètres s'ouvre en premier.
   - `on_tab_changed` rafraîchit la vue correspondante.
-  - `SettingsTab` reçoit `on_change=mods_view.refresh` pour synchroniser les deux onglets.
+  - `SettingsTab` reçoit `on_change=mods_view.refresh` pour synchroniser les deux onglets, et `is_busy` pour bloquer les modifications pendant une opération.
+  - `on_close` empêche de fermer la fenêtre pendant un déploiement ou une purge.
+  - Si `config.json` était illisible, un avertissement indique où il a été mis de côté.
 - `resource_path()` : renvoie `sys._MEIPASS` (exécutable PyInstaller) ou la racine du projet en développement.
 
 ### 4.2 `core/config.py`
@@ -85,7 +91,7 @@ Les mods d'un jeu sont stockés dans `Mods/<nom_dossier_valide(nom)>/<mod>/`.
 
 | Méthode | Rôle |
 |---|---|
-| `load()` / `save()` | Persistance JSON (UTF-8). |
+| `load()` / `save()` | Persistance JSON (UTF-8). L'écriture est atomique. Un fichier illisible est renommé en `config.corrompu-<date>.json` (il n'est donc pas écrasé par la sauvegarde suivante) et le message est exposé dans `erreur_chargement`. |
 | `_migrer_ancien_format()` | Migre l'ancien format mono-jeu (`dossier_jeu`) vers le multi-jeux et déplace `Mods/<mod>` vers `Mods/<jeu>/<mod>`. |
 | `noms_jeux()`, `get_jeu()`, `jeu_actif()`, `set_jeu_actif()` | Accès/sélection. |
 | `mods_dir(nom)` | Dossier de mods d'un jeu. |
@@ -95,47 +101,69 @@ Les mods d'un jeu sont stockés dans `Mods/<nom_dossier_valide(nom)>/<mod>/`.
 ### 4.3 `core/deployer.py`
 Fonctions utilitaires :
 - `is_same_drive(p1, p2)` : compare les lettres de lecteur (prérequis des hard links).
-- `load_dir(dossier)` : liste récursive des fichiers relatifs d'un mod (ignore `modinfo.json`).
-- `get_state_file(dossier_jeu)` : crée `.mod_manager/` et renvoie `state.json`.
+- `load_dir(dossier)` : liste récursive des fichiers relatifs d'un mod (ignore `modinfo.json` et tout dossier `.mod_manager/`).
+- `read_state(dossier_jeu)` : lit et valide `state.json` (`None` si absent, `StateError` si illisible) ; convertit l'ancien format.
 - `get_deployed_mods(dossier_jeu)` : liste ordonnée des mods déployés (lecture seule, tolérante aux erreurs).
+- `is_deploy_interrupted(dossier_jeu)` : vrai si le dernier déploiement a été interrompu ou si l'état est illisible.
 
-#### Format de `state.json`
+L'état est toujours écrit de façon **atomique** (`core/fsutils.write_json_atomic` : fichier temporaire + `os.replace`), jamais tronqué.
+
+#### Format de `state.json` (version 2)
 ```json
 {
+  "version": 2,
   "deployed_mods": ["ModA", "ModB"],
-  "injected_files": ["Content/Paks/~mods/x.pak"],
-  "org_files": ["config/game.ini"]
+  "in_progress": false,
+  "injected": {
+    "Content/Paks/~mods/x.pak": {"source": "D:/ModInjector/Mods/Jeu/ModA/Content/Paks/~mods/x.pak",
+                                 "mode": "link", "size": 1024, "mtime_ns": 0}
+  },
+  "backups": {"config/game.ini": "config/game.ini.org"}
 }
 ```
-- `injected_files` : chemins relatifs créés par ModInjector.
-- `org_files` : chemins relatifs dont l'original a été renommé en `.org`.
+- `injected` : fichiers créés par ModInjector, avec leur source, leur mode (`link` ou `copy`) et une empreinte (taille + date) prise à l'injection.
+- `backups` : fichier d'origine → nom de sa sauvegarde. Le nom est `<fichier>.org`, ou `<fichier>.1.org`, `<fichier>.2.org`… si ce nom est déjà pris : **une sauvegarde existante n'est jamais écrasée**.
+- `in_progress` : vaut `true` pendant le déploiement ; s'il reste à `true`, le déploiement a été interrompu.
+- L'ancien format (`injected_files` / `org_files`) est encore lu et purgé correctement.
 
 #### `deploy_mods(dossier_jeu, dossier_mods_racine, load_order, logger)`
 ```mermaid
 flowchart TD
     A[Même disque ?] -- non --> X[Erreur, return False]
-    A -- oui --> B[purge_mods : retour à l'état propre]
-    B --> C[Pour chaque mod du load_order : final_files_map rel -> source]
+    A -- oui --> B[purge_mods]
+    B -- échec --> X2[Déploiement annulé, return False]
+    B -- ok --> C[Pour chaque mod du load_order : final_files_map rel -> source]
     C --> D{Fichiers à déployer ?}
     D -- non --> E[return True]
-    D -- oui --> F[Pour chaque fichier]
+    D -- oui --> S[Écrire state.json in_progress=true AVANT toute modification]
+    S --> F[Pour chaque fichier]
     F --> G{Cible existe ?}
-    G -- oui --> H[Renommer en .org + noter dans org_files]
+    G -- oui --> H[Renommer vers un nom .org libre + noter dans backups]
     G -- non --> I
     H --> I[Créer dossiers parents]
     I --> J[os.link source -> cible]
-    J -- OSError --> K[Fallback shutil.copy2]
-    J --> L[noter dans injected_files]
+    J -- OSError --> K[Fallback shutil.copy2, copie partielle supprimée si échec]
+    J --> L[noter dans injected avec empreinte]
     K --> L
-    L --> M[Écrire state.json]
+    L --> M[Sauvegarde de l'état tous les 25 fichiers]
+    M --> F
+    F -- fin --> N[in_progress=false, écriture finale de state.json]
 ```
 **Résolution des conflits** : les mods sont parcourus dans l'ordre ; `final_files_map[rel_path]` est écrasé par les mods suivants → **le dernier mod de la liste gagne**.
 
-#### `purge_mods(dossier_jeu, logger)`
-1. Lit `state.json` (si absent : jeu déjà propre).
-2. Supprime chaque fichier de `injected_files` et remonte en supprimant les dossiers parents devenus vides.
-3. Renomme chaque `<fichier>.org` de `org_files` vers son nom d'origine.
-4. Supprime `state.json`.
+**Interruption** : l'état est enregistré avant toute modification, tous les 25 fichiers (`SAVE_EVERY`) et dans un `finally`. Un déploiement interrompu par une exception reste donc entièrement purgeable ; en cas de coupure brutale (crash, extinction), au plus les 25 derniers fichiers peuvent ne pas être suivis — les originaux, eux, ne sont jamais perdus puisque les sauvegardes n'écrasent rien.
+
+#### `purge_mods(dossier_jeu, logger) -> bool`
+1. Lit `state.json` (absent : jeu déjà propre → `True` ; illisible : **rien n'est touché** → `False`).
+2. Pour chaque fichier injecté :
+   - hard link toujours intact (`os.path.samefile`) → supprimé ; si son empreinte a changé, un avertissement signale que le jeu l'a modifié sur place (et donc aussi le fichier source du mod) ;
+   - fichier remplacé depuis par le jeu (mise à jour) → **conservé** ;
+   - suppression impossible (fichier verrouillé, jeu lancé) → l'entrée est gardée pour une nouvelle tentative.
+   Les dossiers parents devenus vides sont supprimés.
+3. Chaque sauvegarde est renommée vers son nom d'origine, sauf si un fichier occupe déjà ce nom (il n'est jamais écrasé ; l'ancien original reste dans sa sauvegarde).
+4. Tout a réussi → `state.json` et `.mod_manager/` sont supprimés. Sinon, l'état est réécrit avec ce qui reste à faire et la fonction renvoie `False` ; `deploy_mods` refuse alors de redéployer.
+
+Les chemins lus dans l'état sont vérifiés : tout chemin qui sortirait du dossier du jeu est ignoré.
 
 > Le déploiement commence toujours par une purge : il est **idempotent**.
 
@@ -145,7 +173,10 @@ flowchart TD
 - `refresh()` : resynchronise avec le disque, retire du `load_order` les mods disparus, persiste si besoin.
 - **Détection automatique** : `_poll()` (toutes les 2 s, `POLL_INTERVAL_MS`) compare `_scan()` (jeu, mods présents, mods déployés) à `_snapshot` et rafraîchit si différent.
 - Marqueurs : `✔` déployé, `⏳` en attente (comparaison avec `get_deployed_mods`).
-- `action_deploy` / `action_purge` : validations, confirmation de purge, logs via le callback `self.log`.
+- `action_deploy` / `action_purge` : validations, confirmation de purge, puis exécution via `_run_task` **dans un thread** pour ne pas figer l'interface :
+  - pendant l'opération, `busy` est vrai : boutons et sélecteur de jeu désactivés, `refresh()`/`_poll()` suspendus, modifications des jeux refusées dans l'onglet Paramètres et fermeture de la fenêtre bloquée (`App.on_close`) ;
+  - `self.log` est utilisable depuis le thread : les messages passent par une `queue.Queue` vidée toutes les 100 ms par `_drain_logs` dans le thread de l'UI.
+- La barre de statut signale un déploiement interrompu (`is_deploy_interrupted`) et invite à purger.
 
 ### 4.5 `views/settings_tab.py` — `SettingsTab`
 - Liste des jeux (gauche) et formulaire nom/dossier (droite) + fiche d'information générée par `_build_info` (existence du dossier, même disque, mods déployés, état de chaque mod).
@@ -163,7 +194,13 @@ uv sync
 uv run python src/modinjector/main.py
 ```
 
-### Environnement de test
+### Tests automatisés
+```powershell
+uv run pytest
+```
+`tests/test_deployer.py` et `tests/test_config.py` testent le cœur dans des dossiers temporaires : déploiement/purge, priorité du load order, sauvegardes `.org` déjà présentes, fichiers mis à jour par le jeu, purge partielle, déploiement interrompu, état ou config corrompus, ancien format d'état.
+
+### Environnement de test manuel
 `tests/sandbox/` contient des jeux (`sandbox_jeu/*`) et mods (`sandbox_mod/*`) factices. Ajoutez un jeu pointant vers un dossier de `sandbox_jeu` pour tester sans risque.
 Les artefacts générés (`tests/sandbox/data`, `tests/sandbox/Mods`, `.mod_manager`) sont ignorés par git.
 
@@ -193,6 +230,5 @@ uv run python scripts/build.py
 |  | `.idea/`, `.vscode/*`, `.mod_manager/`, `*.org` |
 
 ## 7. Pistes d'amélioration
-- Tests automatisés (`pytest`) du cœur (`deployer`, `config`) à partir de `tests/sandbox`.
-- Exécuter déploiement/purge dans un thread pour ne pas figer l'UI sur de gros mods.
+- Barre de progression pendant le déploiement de gros mods.
 - Internationalisation (textes actuellement en français, noms de variables mixtes).

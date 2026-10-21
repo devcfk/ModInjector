@@ -1,5 +1,6 @@
 import sys
 import os
+from tkinter import messagebox
 
 import customtkinter as ctk
 
@@ -49,8 +50,10 @@ class App(ctk.CTk):
 
         self.mods_view = ModsTab(self.tab_mods, self.cfg)
         self.mods_view.grid(row=0, column=0, sticky="nsew")
-        self.settings_view = SettingsTab(self.tab_settings, self.cfg, on_change=self.mods_view.refresh)
+        self.settings_view = SettingsTab(self.tab_settings, self.cfg, on_change=self.mods_view.refresh,
+                                         is_busy=lambda: self.mods_view.busy)
         self.settings_view.grid(row=0, column=0, sticky="nsew")
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         ctk.CTkLabel(self, text=f"v{__version__}", text_color="gray", font=ctk.CTkFont(size=10)).grid(
             row=1, column=0, sticky="e", padx=20, pady=(0, 8))
@@ -58,6 +61,17 @@ class App(ctk.CTk):
         # Premier lancement : aucun jeu configuré -> on ouvre directement les paramètres
         if not self.cfg.jeux:
             self.tabview.set(TAB_SETTINGS)
+
+        if self.cfg.erreur_chargement:
+            self.after(200, lambda: messagebox.showwarning("Configuration", self.cfg.erreur_chargement))
+
+    def on_close(self):
+        # Fermer pendant un déploiement laisserait le jeu dans un état intermédiaire
+        if self.mods_view.busy:
+            messagebox.showwarning("Opération en cours",
+                                   "Un déploiement ou une purge est en cours.\nAttendez la fin avant de fermer ModInjector.")
+            return
+        self.destroy()
 
     def on_tab_changed(self):
         if self.tabview.get() == TAB_SETTINGS:

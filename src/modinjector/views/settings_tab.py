@@ -5,16 +5,17 @@ import tkinter as tk
 import customtkinter as ctk
 
 from core.config import ConfigManager
-from core.deployer import is_same_drive, get_deployed_mods
+from core.deployer import is_same_drive, get_deployed_mods, is_deploy_interrupted
 
 
 class SettingsTab(ctk.CTkFrame):
     """Onglet Paramètres : gestion de la liste des jeux et fiche d'information par jeu."""
 
-    def __init__(self, master, cfg: ConfigManager, on_change):
+    def __init__(self, master, cfg: ConfigManager, on_change, is_busy=lambda: False):
         super().__init__(master, fg_color="transparent")
         self.cfg = cfg
         self.on_change = on_change  # appelé après toute modification de la liste des jeux
+        self.is_busy = is_busy  # vrai pendant un déploiement / une purge : les jeux ne doivent pas changer
         self.nom_var = ctk.StringVar()
         self.dossier_var = ctk.StringVar()
         self.selected: str | None = None
@@ -111,6 +112,8 @@ class SettingsTab(ctk.CTkFrame):
             meme = is_same_drive(dossier, mods_dir)
             lignes.append(f"Même disque                  : {'✔ oui (hard links possibles)' if meme else '✘ NON — déplacez ModInjector sur le disque du jeu'}")
         lignes.append(f"Mods dans le jeu             : {len(deployed)} déployé(s)" if deployed else "Mods dans le jeu             : aucun (jeu d'origine)")
+        if dossier.exists() and is_deploy_interrupted(dossier):
+            lignes.append("État du déploiement          : ⚠ interrompu ou illisible — purgez le jeu puis redéployez")
 
         lignes += [
             "",
@@ -148,7 +151,15 @@ class SettingsTab(ctk.CTkFrame):
             if not self.nom_var.get().strip():
                 self.nom_var.set(Path(dossier).name)
 
+    def _refuse_if_busy(self) -> bool:
+        if self.is_busy():
+            messagebox.showwarning("Opération en cours", "Attendez la fin du déploiement ou de la purge en cours.")
+            return True
+        return False
+
     def save_game(self):
+        if self._refuse_if_busy():
+            return
         nom, dossier = self.nom_var.get(), self.dossier_var.get().strip()
         if self.selected is None:
             erreur = self.cfg.ajouter_jeu(nom, dossier)
@@ -163,7 +174,7 @@ class SettingsTab(ctk.CTkFrame):
         self.on_change()
 
     def delete_game(self):
-        if self.selected is None:
+        if self.selected is None or self._refuse_if_busy():
             return
         if not messagebox.askyesno(
             "Supprimer le jeu",
