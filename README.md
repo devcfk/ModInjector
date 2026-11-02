@@ -3,6 +3,10 @@
 **ModInjector** est un gestionnaire de mods simple et non destructif pour jeux vidéo sous **Windows**.
 Il vous permet de ranger vos mods, de choisir leur ordre de priorité, puis de les injecter dans votre jeu en un clic — et de **restaurer le jeu d'origine** tout aussi facilement.
 
+![Onglet Mods de ModInjector](docs/images/06_mods_deploye.png)
+
+📘 **Nouveau venu ?** Le [manuel utilisateur illustré](docs/Manuel_utilisateur_ModInjector.docx) (Word) vous guide pas à pas.
+
 ## ✨ Fonctionnalités
 
 - 🎮 **Multi-jeux** : gérez plusieurs jeux, chacun avec sa propre bibliothèque de mods.
@@ -11,6 +15,7 @@ Il vous permet de ranger vos mods, de choisir leur ordre de priorité, puis de l
 - ⚡ **Injection instantanée** : utilise des *hard links* (aucune copie, 0 octet supplémentaire sur le disque).
 - 🛡️ **Non destructif** : les fichiers originaux du jeu sont sauvegardés (`.org`) puis restaurés lors de la purge.
 - 🧹 **Purge en un clic** : retire tous les mods et remet le jeu dans son état d'origine.
+- 🕹️ **Interface « gaming »** : thème sombre aux accents néon, journal façon terminal.
 
 ## 📥 Installation
 
@@ -38,6 +43,8 @@ Aucune installation de Python n'est nécessaire.
 
 La fiche d'information vous indique si le dossier est trouvé et si le jeu est sur le même disque que ModInjector.
 
+![Fiche d'un jeu dans l'onglet Paramètres](docs/images/03_parametres_fiche_jeu.png)
+
 ### 2. Ajouter des mods
 1. Dans l'onglet **Mods**, cliquez sur **📂 Ouvrir Mods** : le dossier `Mods/<nom du jeu>/` s'ouvre.
 2. Déposez-y chaque mod **dans son propre sous-dossier**. Ce sous-dossier doit reproduire l'arborescence du jeu :
@@ -63,6 +70,8 @@ Légende de la liste de déploiement :
 |---------|---------------|
 | ✔ | Mod déjà déployé dans le jeu |
 | ⏳ | Mod dans la liste, en attente de déploiement |
+
+![Liste de déploiement en attente](docs/images/05_mods_ordre.png)
 
 ### 4. Déployer
 Cliquez sur **🚀 DÉPLOYER LES MODS**. Le journal affiche chaque étape (purge préalable, calcul des conflits, injection).
@@ -93,6 +102,11 @@ Le jeu et vos mods ne sont pas supprimés, seulement retirés de la configuratio
 
 **J'ai un fichier `.org` dans mon jeu, c'est normal ?**
 Oui : c'est la sauvegarde d'un fichier original remplacé par un mod. Il est renommé à son nom d'origine lors de la purge. Si un fichier `.org` existe déjà, la sauvegarde est nommée `.1.org`, `.2.org`… : une sauvegarde n'est jamais écrasée. Un `.org` peut rester après la purge si le jeu a entre-temps installé une version plus récente du fichier : c'est l'ancien original, vous pouvez le supprimer.
+
+## 📘 Documentation
+
+- [Manuel utilisateur](docs/Manuel_utilisateur_ModInjector.docx) (Word, illustré de captures d'écran).
+- [Documentation technique](docs/ARCHITECTURE.md).
 
 ## 🛠️ Pour les développeurs
 

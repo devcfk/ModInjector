@@ -9,7 +9,7 @@ ModInjector est une application de bureau **Python 3.14+** (Windows) avec une GU
 ### Stack
 | Élément | Outil |
 |---|---|
-| GUI | `customtkinter` (+ `tkinter.Listbox`, `messagebox`, `filedialog`) |
+| GUI | `customtkinter` (+ `tkinter.Listbox`, `messagebox`, `filedialog`), thème maison dans `theme.py` |
 | Images | `pillow` |
 | Packaging | `pyinstaller` (`--onefile --noconsole`) |
 | Gestion de projet | `uv` (`pyproject.toml`, `uv.lock`) |
@@ -22,7 +22,8 @@ ModInjector/
 ├── scripts/build.py             # Build PyInstaller → livraison/ModInjector.zip
 ├── src/modinjector/
 │   ├── main.py                  # Point d'entrée
-│   ├── gui.py                   # Fenêtre principale (App), resource_path
+│   ├── gui.py                   # Fenêtre principale (App), bandeau titre, resource_path
+│   ├── theme.py                 # Thème « gaming » : palette, polices, apply()
 │   ├── version.py               # __version__
 │   ├── core/
 │   │   ├── config.py            # ConfigManager : jeux, load order, persistance
@@ -36,7 +37,10 @@ ModInjector/
 │   ├── test_config.py           # Tests pytest de la configuration
 │   └── sandbox/                 # Jeux et mods factices pour tests manuels
 ├── pyproject.toml / uv.lock
-└── docs/ARCHITECTURE.md
+└── docs/
+    ├── ARCHITECTURE.md          # Ce document
+    ├── Manuel_utilisateur_ModInjector.docx  # Manuel utilisateur (Word)
+    └── images/                  # Captures d'écran (README, manuel)
 ```
 
 > Les imports sont relatifs au dossier `src/modinjector` (`from core.config import ...`), configuré via `extraPaths` de pyright et par le lancement du script depuis ce dossier/PyInstaller.
@@ -52,6 +56,7 @@ flowchart TD
     SettingsTab --> Config
     ModsTab --> Deployer[core/deployer]
     SettingsTab --> Deployer
+    main --> Theme[theme.apply]
     Config --> ConfigJson[(data/config.json)]
     Deployer --> State[(jeu/.mod_manager/state.json)]
 ```
@@ -62,8 +67,8 @@ flowchart TD
 ## 4. Modules
 
 ### 4.1 `main.py` / `gui.py`
-- `main.py` configure le thème (`dark`, `blue`) et lance `gui.App().mainloop()`.
-- `gui.App` (`CTk`) : titre/icône, instancie `ConfigManager`, crée un `CTkTabview` avec les onglets **Mods** et **Paramètres**.
+- `main.py` applique le thème (`theme.apply()`) et lance `gui.App().mainloop()`.
+- `gui.App` (`CTk`) : titre/icône, bandeau « ⚡ MOD INJECTOR », instancie `ConfigManager`, crée un `CTkTabview` avec les onglets **Mods** et **Paramètres**.
   - Si aucun jeu n'est configuré, l'onglet Paramètres s'ouvre en premier.
   - `on_tab_changed` rafraîchit la vue correspondante.
   - `SettingsTab` reçoit `on_change=mods_view.refresh` pour synchroniser les deux onglets, et `is_busy` pour bloquer les modifications pendant une opération.
@@ -71,7 +76,17 @@ flowchart TD
   - Si `config.json` était illisible, un avertissement indique où il a été mis de côté.
 - `resource_path()` : renvoie `sys._MEIPASS` (exécutable PyInstaller) ou la racine du projet en développement.
 
-### 4.2 `core/config.py`
+### 4.2 `theme.py`
+Centralise l'apparence de l'application (thème sombre, accents néon).
+
+- **Palette** : constantes `BG`, `PANEL`, `INPUT`, `BORDER`, `TEXT`, `TEXT_MUTED`, `PRIMARY` (violet), `CYAN`, `SUCCESS` (vert, Déployer), `DANGER` (magenta, Purger/Supprimer), `DANGER_SOFT` (Retirer), `CONSOLE_TEXT` (vert terminal).
+- **Polices** : `font()` (Bahnschrift, police Windows ; repli automatique si absente) et `mono_font()` (Consolas).
+- `apply()` : passe en mode sombre, charge le thème `dark-blue` de CustomTkinter puis surcharge `ctk.ThemeManager.theme` (couleurs, arrondis, bordures). **Doit être appelé avant la création de la fenêtre.**
+- Aides pour les widgets que le thème CustomTkinter ne couvre pas : `listbox_options()` (`tk.Listbox`), `console_options()` (zones de logs), `section_label()` (titres de section en majuscules, couleur cyan).
+
+Le thème étant du code Python, aucun fichier supplémentaire n'est à embarquer dans l'exécutable. Pour changer une couleur, modifiez la constante correspondante.
+
+### 4.3 `core/config.py`
 Constantes de chemins :
 - `APP_DIR` : dossier de l'exécutable si *frozen* (PyInstaller), sinon racine du projet.
 - `DATA_DIR = APP_DIR/data`, `CONFIG_FILE = DATA_DIR/config.json`, `MODS_DIR = APP_DIR/Mods`.
@@ -98,7 +113,7 @@ Les mods d'un jeu sont stockés dans `Mods/<nom_dossier_valide(nom)>/<mod>/`.
 | `ajouter_jeu()`, `modifier_jeu()`, `supprimer_jeu()` | CRUD ; renvoient un message d'erreur ou `None`. Le renommage déplace aussi le dossier de mods. La suppression conserve les mods sur disque. |
 | `set_load_order()` | Met à jour et persiste l'ordre d'un jeu. |
 
-### 4.3 `core/deployer.py`
+### 4.4 `core/deployer.py`
 Fonctions utilitaires :
 - `is_same_drive(p1, p2)` : compare les lettres de lecteur (prérequis des hard links).
 - `load_dir(dossier)` : liste récursive des fichiers relatifs d'un mod (ignore `modinfo.json` et tout dossier `.mod_manager/`).
@@ -167,7 +182,7 @@ Les chemins lus dans l'état sont vérifiés : tout chemin qui sortirait du doss
 
 > Le déploiement commence toujours par une purge : il est **idempotent**.
 
-### 4.4 `views/mods_tab.py` — `ModsTab`
+### 4.5 `views/mods_tab.py` — `ModsTab`
 - Sélecteur de jeu, deux `Listbox` (Bibliothèque / Ordre de déploiement), boutons Activer/Retirer/Monter/Descendre, boutons Déployer/Purger, zone de logs, barre de statut.
 - État en mémoire : `load_order`, `available_mods`.
 - `refresh()` : resynchronise avec le disque, retire du `load_order` les mods disparus, persiste si besoin.
@@ -178,7 +193,7 @@ Les chemins lus dans l'état sont vérifiés : tout chemin qui sortirait du doss
   - `self.log` est utilisable depuis le thread : les messages passent par une `queue.Queue` vidée toutes les 100 ms par `_drain_logs` dans le thread de l'UI.
 - La barre de statut signale un déploiement interrompu (`is_deploy_interrupted`) et invite à purger.
 
-### 4.5 `views/settings_tab.py` — `SettingsTab`
+### 4.6 `views/settings_tab.py` — `SettingsTab`
 - Liste des jeux (gauche) et formulaire nom/dossier (droite) + fiche d'information générée par `_build_info` (existence du dossier, même disque, mods déployés, état de chaque mod).
 - `save_game` délègue à `ajouter_jeu` ou `modifier_jeu`, affiche l'erreur éventuelle, puis appelle `on_change`.
 - `delete_game` : confirmation, appel à `supprimer_jeu`.
@@ -229,6 +244,13 @@ uv run python scripts/build.py
 | `.gitignore`, `.vscode/extensions.json` | `data/`, `Mods/` (données utilisateur) |
 |  | `.idea/`, `.vscode/*`, `.mod_manager/`, `*.org` |
 
-## 7. Pistes d'amélioration
+## 7. Documentation utilisateur
+
+- `docs/Manuel_utilisateur_ModInjector.docx` : manuel pas à pas destiné aux utilisateurs finaux.
+- `docs/images/` : captures utilisées par le manuel et le README.
+
+Les captures sont réalisées sur des **données de démonstration fictives** (jeux « Nebula Commander » et « Turbo Racer », lecteur `X:`) afin de n'exposer aucun chemin ni nom personnel. Après une évolution visible de l'interface, refaites les captures dans les mêmes conditions et mettez le manuel à jour.
+
+## 8. Pistes d'amélioration
 - Barre de progression pendant le déploiement de gros mods.
 - Internationalisation (textes actuellement en français, noms de variables mixtes).
