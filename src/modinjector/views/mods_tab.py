@@ -7,6 +7,7 @@ from tkinter import messagebox
 
 import customtkinter as ctk
 
+import theme
 from core.config import ConfigManager
 from core.deployer import deploy_mods, purge_mods, get_deployed_mods, is_deploy_interrupted
 
@@ -20,7 +21,7 @@ class ModsTab(ctk.CTkFrame):
     """Onglet principal : sélection du jeu, gestion du load order, déploiement."""
 
     def __init__(self, master, cfg: ConfigManager):
-        super().__init__(master, fg_color="transparent")
+        super().__init__(master, fg_color="transparent", border_width=0)
         self.cfg = cfg
         self.game_var = ctk.StringVar(value=AUCUN_JEU)
         self.load_order: list[str] = []
@@ -45,13 +46,16 @@ class ModsTab(ctk.CTkFrame):
         top.grid(row=0, column=0, padx=10, pady=(10, 5), sticky="ew")
         top.grid_columnconfigure(1, weight=1)
 
-        ctk.CTkLabel(top, text="Jeu :").grid(row=0, column=0, padx=10, pady=10)
+        theme.section_label(top, "Jeu :").grid(row=0, column=0, padx=10, pady=10)
         self.combo_jeu = ctk.CTkComboBox(top, variable=self.game_var, values=[AUCUN_JEU],
                                          state="readonly", command=self.on_game_selected)
         self.combo_jeu.grid(row=0, column=1, padx=5, pady=10, sticky="ew")
-        btn_refresh = ctk.CTkButton(top, text="🔄 Rafraîchir", width=110, command=self.refresh)
+        btn_refresh = ctk.CTkButton(top, text="🔄 Rafraîchir", width=110, command=self.refresh,
+                                    fg_color="transparent", border_width=1, border_color=theme.CYAN,
+                                    hover_color=theme.PANEL_ALT)
         btn_refresh.grid(row=0, column=2, padx=5, pady=10)
-        ctk.CTkButton(top, text="📂 Ouvrir Mods", width=110, command=self.open_mods_folder).grid(row=0, column=3, padx=(5, 10), pady=10)
+        ctk.CTkButton(top, text="📂 Ouvrir Mods", width=110, command=self.open_mods_folder,
+                      fg_color="transparent", border_width=1, border_color=theme.CYAN, hover_color=theme.PANEL_ALT).grid(row=0, column=3, padx=(5, 10), pady=10)
         self._action_widgets += [self.combo_jeu, btn_refresh]
 
         # --- Gestion du Load Order ---
@@ -61,24 +65,23 @@ class ModsTab(ctk.CTkFrame):
         frame_mods.grid_columnconfigure(2, weight=1)
         frame_mods.grid_rowconfigure(1, weight=1)
 
-        ctk.CTkLabel(frame_mods, text="Bibliothèque (hors liste de déploiement)", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, pady=(10, 5))
+        theme.section_label(frame_mods, "Bibliothèque (hors liste de déploiement)").grid(row=0, column=0, pady=(10, 5))
         self.list_available = self._make_listbox(frame_mods)
         self.list_available.grid(row=1, column=0, padx=(15, 5), pady=(0, 15), sticky="nsew")
 
-        frame_transfer = ctk.CTkFrame(frame_mods, fg_color="transparent")
+        frame_transfer = ctk.CTkFrame(frame_mods, fg_color="transparent", border_width=0)
         frame_transfer.grid(row=1, column=1, padx=5)
         btn_activer = ctk.CTkButton(frame_transfer, text="Activer ►", width=90, command=self.activate_mod)
         btn_activer.pack(pady=5)
         btn_retirer = ctk.CTkButton(frame_transfer, text="◄ Retirer", width=90, command=self.deactivate_mod,
-                                    fg_color="#7A3636", hover_color="#592525")
+                                    fg_color=theme.DANGER_SOFT, hover_color=theme.DANGER_SOFT_HOVER)
         btn_retirer.pack(pady=5)
 
-        ctk.CTkLabel(frame_mods, text="Ordre de Déploiement (Plus bas = Prioritaire)",
-                     font=ctk.CTkFont(weight="bold")).grid(row=0, column=2, pady=(10, 5))
+        theme.section_label(frame_mods, "Ordre de déploiement (plus bas = prioritaire)").grid(row=0, column=2, pady=(10, 5))
         self.list_active = self._make_listbox(frame_mods)
         self.list_active.grid(row=1, column=2, padx=5, pady=(0, 15), sticky="nsew")
 
-        frame_order = ctk.CTkFrame(frame_mods, fg_color="transparent")
+        frame_order = ctk.CTkFrame(frame_mods, fg_color="transparent", border_width=0)
         frame_order.grid(row=1, column=3, padx=(0, 15))
         btn_monter = ctk.CTkButton(frame_order, text="▲ Monter", width=70, command=self.move_up)
         btn_monter.pack(pady=5)
@@ -90,12 +93,12 @@ class ModsTab(ctk.CTkFrame):
         frame_actions.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
         frame_actions.grid_columnconfigure((0, 1), weight=1)
         btn_deploy = ctk.CTkButton(frame_actions, text="🚀 DÉPLOYER LES MODS", command=self.action_deploy,
-                                   fg_color="#2FA572", hover_color="#106A43", height=45,
-                                   font=ctk.CTkFont(weight="bold", size=14))
+                                   fg_color=theme.SUCCESS, hover_color=theme.SUCCESS_HOVER, height=48,
+                                   font=theme.font(15, "bold"))
         btn_deploy.grid(row=0, column=0, padx=15, pady=15, sticky="ew")
         btn_purge = ctk.CTkButton(frame_actions, text="🧹 PURGER (JEU D'ORIGINE)", command=self.action_purge,
-                                  fg_color="#C22929", hover_color="#8F1515", height=45,
-                                  font=ctk.CTkFont(weight="bold", size=14))
+                                  fg_color=theme.DANGER, hover_color=theme.DANGER_HOVER, height=48,
+                                  font=theme.font(15, "bold"))
         btn_purge.grid(row=0, column=1, padx=15, pady=15, sticky="ew")
         self._action_widgets += [btn_activer, btn_retirer, btn_monter, btn_descendre, btn_deploy, btn_purge]
 
@@ -104,17 +107,16 @@ class ModsTab(ctk.CTkFrame):
         frame_logs.grid(row=3, column=0, padx=10, pady=5, sticky="nsew")
         frame_logs.grid_columnconfigure(0, weight=1)
         frame_logs.grid_rowconfigure(0, weight=1)
-        self.log_textbox = ctk.CTkTextbox(frame_logs, state="disabled", font=ctk.CTkFont(family="Consolas", size=12))
+        self.log_textbox = ctk.CTkTextbox(frame_logs, state="disabled", **theme.console_options())
         self.log_textbox.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
         # --- Statut ---
-        self.lbl_status = ctk.CTkLabel(self, text="", anchor="w")
+        self.lbl_status = ctk.CTkLabel(self, text="", anchor="w", text_color=theme.CYAN)
         self.lbl_status.grid(row=4, column=0, padx=15, pady=(0, 5), sticky="ew")
 
     @staticmethod
     def _make_listbox(master) -> tk.Listbox:
-        return tk.Listbox(master, bg="#2b2b2b", fg="white", selectbackground="#1f538d", borderwidth=0,
-                          highlightthickness=1, font=("Arial", 11), exportselection=False)
+        return tk.Listbox(master, **theme.listbox_options())
 
     # ------------------------------------------------------------ Données
     def _jeu(self) -> dict | None:

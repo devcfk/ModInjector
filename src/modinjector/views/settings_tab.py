@@ -4,6 +4,7 @@ import tkinter as tk
 
 import customtkinter as ctk
 
+import theme
 from core.config import ConfigManager
 from core.deployer import is_same_drive, get_deployed_mods, is_deploy_interrupted
 
@@ -12,7 +13,7 @@ class SettingsTab(ctk.CTkFrame):
     """Onglet Paramètres : gestion de la liste des jeux et fiche d'information par jeu."""
 
     def __init__(self, master, cfg: ConfigManager, on_change, is_busy=lambda: False):
-        super().__init__(master, fg_color="transparent")
+        super().__init__(master, fg_color="transparent", border_width=0)
         self.cfg = cfg
         self.on_change = on_change  # appelé après toute modification de la liste des jeux
         self.is_busy = is_busy  # vrai pendant un déploiement / une purge : les jeux ne doivent pas changer
@@ -30,9 +31,8 @@ class SettingsTab(ctk.CTkFrame):
         left = ctk.CTkFrame(self)
         left.grid(row=0, column=0, padx=10, pady=10, sticky="nsw")
         left.grid_rowconfigure(1, weight=1)
-        ctk.CTkLabel(left, text="Jeux configurés", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, padx=10, pady=(10, 5))
-        self.listbox = tk.Listbox(left, bg="#2b2b2b", fg="white", selectbackground="#1f538d", borderwidth=0,
-                                  highlightthickness=1, font=("Arial", 11), width=26, exportselection=False)
+        theme.section_label(left, "Jeux configurés").grid(row=0, column=0, padx=10, pady=(10, 5))
+        self.listbox = tk.Listbox(left, width=26, **theme.listbox_options())
         self.listbox.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="nsew")
         self.listbox.bind("<<ListboxSelect>>", self.on_select)
         ctk.CTkButton(left, text="➕ Nouveau jeu", command=self.new_game).grid(row=2, column=0, padx=10, pady=(0, 10), sticky="ew")
@@ -43,25 +43,26 @@ class SettingsTab(ctk.CTkFrame):
         right.grid_columnconfigure(1, weight=1)
         right.grid_rowconfigure(5, weight=1)
 
-        ctk.CTkLabel(right, text="Détails du jeu", font=ctk.CTkFont(weight="bold")).grid(row=0, column=0, columnspan=3, padx=10, pady=(10, 5), sticky="w")
+        theme.section_label(right, "Détails du jeu").grid(row=0, column=0, columnspan=3, padx=10, pady=(10, 5), sticky="w")
 
         ctk.CTkLabel(right, text="Nom :").grid(row=1, column=0, padx=10, pady=5, sticky="w")
         ctk.CTkEntry(right, textvariable=self.nom_var, placeholder_text="Ex: eFootball 2027").grid(row=1, column=1, columnspan=2, padx=10, pady=5, sticky="ew")
 
         ctk.CTkLabel(right, text="Dossier :").grid(row=2, column=0, padx=10, pady=5, sticky="w")
         ctk.CTkEntry(right, textvariable=self.dossier_var, placeholder_text="Ex: C:/Jeux/MonJeu").grid(row=2, column=1, padx=10, pady=5, sticky="ew")
-        ctk.CTkButton(right, text="Parcourir", width=90, command=self.browse).grid(row=2, column=2, padx=10, pady=5)
+        ctk.CTkButton(right, text="Parcourir", width=90, command=self.browse,
+                      fg_color="transparent", border_width=1, border_color=theme.CYAN, hover_color=theme.PANEL_ALT).grid(row=2, column=2, padx=10, pady=5)
 
-        btns = ctk.CTkFrame(right, fg_color="transparent")
+        btns = ctk.CTkFrame(right, fg_color="transparent", border_width=0)
         btns.grid(row=3, column=0, columnspan=3, padx=10, pady=10, sticky="w")
         self.btn_save = ctk.CTkButton(btns, text="💾 Enregistrer", command=self.save_game)
         self.btn_save.pack(side="left", padx=(0, 10))
         self.btn_delete = ctk.CTkButton(btns, text="🗑 Supprimer", command=self.delete_game,
-                                        fg_color="#C22929", hover_color="#8F1515")
+                                        fg_color=theme.DANGER, hover_color=theme.DANGER_HOVER)
         self.btn_delete.pack(side="left")
 
-        ctk.CTkLabel(right, text="Informations", font=ctk.CTkFont(weight="bold")).grid(row=4, column=0, columnspan=3, padx=10, pady=(10, 5), sticky="w")
-        self.info_box = ctk.CTkTextbox(right, state="disabled", font=ctk.CTkFont(family="Consolas", size=12))
+        theme.section_label(right, "Informations").grid(row=4, column=0, columnspan=3, padx=10, pady=(10, 5), sticky="w")
+        self.info_box = ctk.CTkTextbox(right, state="disabled", **{**theme.console_options(), "text_color": theme.CYAN})
         self.info_box.grid(row=5, column=0, columnspan=3, padx=10, pady=(0, 10), sticky="nsew")
 
     # ----------------------------------------------------------- Liste
