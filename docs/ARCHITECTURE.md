@@ -91,37 +91,39 @@ Constantes de chemins :
 - `APP_DIR` : dossier de l'exécutable si *frozen* (PyInstaller), sinon racine du projet.
 - `DATA_DIR = APP_DIR/data`, `CONFIG_FILE = DATA_DIR/config.json`, `MODS_DIR = APP_DIR/Mods`.
 
-`nom_dossier_valide(nom)` : remplace les caractères interdits sous Windows (`<>:"/\|?*`) par `_`.
+`safe_folder_name(name)` : remplace les caractères interdits sous Windows (`<>:"/\|?*`) par `_`.
 
 `ConfigManager` — format de `config.json` :
 ```json
 {
-  "jeux": [
-    { "nom": "MonJeu", "dossier": "D:/Jeux/MonJeu", "load_order": ["ModA", "ModB"], "copie_forcee": false }
+  "games": [
+    { "name": "MonJeu", "game_dir": "D:/Jeux/MonJeu", "load_order": ["ModA", "ModB"], "force_copy": false }
   ],
-  "jeu_actif": "MonJeu"
+  "active_game": "MonJeu"
 }
 ```
-Les mods d'un jeu sont stockés dans `Mods/<nom_dossier_valide(nom)>/<mod>/`.
-`copie_forcee` (absent des anciennes configurations, `false` par défaut) force la copie réelle des fichiers au déploiement de ce jeu.
+Les mods d'un jeu sont stockés dans `Mods/<safe_folder_name(name)>/<mod>/`.
+`force_copy` (`false` par défaut) force la copie réelle des fichiers au déploiement de ce jeu.
+
+Les anciens formats sont convertis au chargement : clés françaises de la v1.0/v1.1 (`jeux`, `nom`, `dossier`, `copie_forcee`, `jeu_actif`, réécrites aussitôt au nouveau format) et format mono-jeu (`dossier_jeu`).
 
 | Méthode | Rôle |
 |---|---|
-| `load()` / `save()` | Persistance JSON (UTF-8). L'écriture est atomique. Un fichier illisible est renommé en `config.corrompu-<date>.json` (il n'est donc pas écrasé par la sauvegarde suivante) et le message est exposé dans `erreur_chargement`. |
-| `_migrer_ancien_format()` | Migre l'ancien format mono-jeu (`dossier_jeu`) vers le multi-jeux et déplace `Mods/<mod>` vers `Mods/<jeu>/<mod>`. |
-| `noms_jeux()`, `get_jeu()`, `jeu_actif()`, `set_jeu_actif()` | Accès/sélection. |
-| `mods_dir(nom)` | Dossier de mods d'un jeu. |
-| `ajouter_jeu()`, `modifier_jeu()`, `supprimer_jeu()` | CRUD ; renvoient un message d'erreur ou `None`. Le renommage déplace aussi le dossier de mods. La suppression conserve les mods sur disque. |
+| `load()` / `save()` | Persistance JSON (UTF-8). L'écriture est atomique. Un fichier illisible est renommé en `config.corrupted-<date>.json` (il n'est donc pas écrasé par la sauvegarde suivante) et le message est exposé dans `load_error`. |
+| `_migrate_single_game_format()` | Migre l'ancien format mono-jeu (`dossier_jeu`) vers le multi-jeux et déplace `Mods/<mod>` vers `Mods/<jeu>/<mod>`. |
+| `game_names()`, `get_game()`, `active_game()`, `set_active_game()` | Accès/sélection. |
+| `mods_dir(name)` | Dossier de mods d'un jeu. |
+| `add_game()`, `update_game()`, `remove_game()` | CRUD ; renvoient un message d'erreur ou `None`. Le renommage déplace aussi le dossier de mods. La suppression conserve les mods sur disque. |
 | `set_load_order()` | Met à jour et persiste l'ordre d'un jeu. |
-| `set_copie_forcee()` | Active ou désactive la copie réelle forcée pour un jeu, et persiste. |
+| `set_force_copy()` | Active ou désactive la copie réelle forcée pour un jeu, et persiste. |
 
 ### 4.4 `core/deployer.py`
 Fonctions utilitaires :
 - `is_same_drive(p1, p2)` : compare les lettres de lecteur (prérequis des hard links).
-- `load_dir(dossier)` : liste récursive des fichiers relatifs d'un mod (ignore `modinfo.json` et tout dossier `.mod_manager/`).
-- `read_state(dossier_jeu)` : lit et valide `state.json` (`None` si absent, `StateError` si illisible) ; convertit l'ancien format.
-- `get_deployed_mods(dossier_jeu)` : liste ordonnée des mods déployés (lecture seule, tolérante aux erreurs).
-- `is_deploy_interrupted(dossier_jeu)` : vrai si le dernier déploiement a été interrompu ou si l'état est illisible.
+- `load_dir(mod_dir)` : liste récursive des fichiers relatifs d'un mod (ignore `modinfo.json` et tout dossier `.mod_manager/`).
+- `read_state(game_dir)` : lit et valide `state.json` (`None` si absent, `StateError` si illisible) ; convertit l'ancien format.
+- `get_deployed_mods(game_dir)` : liste ordonnée des mods déployés (lecture seule, tolérante aux erreurs).
+- `is_deploy_interrupted(game_dir)` : vrai si le dernier déploiement a été interrompu ou si l'état est illisible.
 
 L'état est toujours écrit de façon **atomique** (`core/fsutils.write_json_atomic` : fichier temporaire + `os.replace`), jamais tronqué.
 
@@ -143,8 +145,8 @@ L'état est toujours écrit de façon **atomique** (`core/fsutils.write_json_ato
 - `in_progress` : vaut `true` pendant le déploiement ; s'il reste à `true`, le déploiement a été interrompu.
 - L'ancien format (`injected_files` / `org_files`) est encore lu et purgé correctement.
 
-#### `deploy_mods(dossier_jeu, dossier_mods_racine, load_order, logger, copie_forcee=False)`
-Avec `copie_forcee=True`, aucun hard link n'est tenté : chaque fichier est copié (`shutil.copy2`, mode `copy` dans l'état) et la vérification « même disque » est sautée. La purge traite ces copies comme les copies de repli (comparaison d'empreinte).
+#### `deploy_mods(game_dir, mods_root, load_order, logger, force_copy=False)`
+Avec `force_copy=True`, aucun hard link n'est tenté : chaque fichier est copié (`shutil.copy2`, mode `copy` dans l'état) et la vérification « même disque » est sautée. La purge traite ces copies comme les copies de repli (comparaison d'empreinte).
 
 ```mermaid
 flowchart TD
@@ -174,7 +176,7 @@ flowchart TD
 
 **Interruption** : l'état est enregistré avant toute modification, tous les 25 fichiers (`SAVE_EVERY`) et dans un `finally`. Un déploiement interrompu par une exception reste donc entièrement purgeable ; en cas de coupure brutale (crash, extinction), au plus les 25 derniers fichiers peuvent ne pas être suivis — les originaux, eux, ne sont jamais perdus puisque les sauvegardes n'écrasent rien.
 
-#### `purge_mods(dossier_jeu, logger) -> bool`
+#### `purge_mods(game_dir, logger) -> bool`
 1. Lit `state.json` (absent : jeu déjà propre → `True` ; illisible : **rien n'est touché** → `False`).
 2. Pour chaque fichier injecté :
    - hard link toujours intact (`os.path.samefile`) → supprimé ; si son empreinte a changé, un avertissement signale que le jeu l'a modifié sur place (et donc aussi le fichier source du mod) ;
@@ -190,7 +192,7 @@ Les chemins lus dans l'état sont vérifiés : tout chemin qui sortirait du doss
 
 ### 4.5 `views/mods_tab.py` — `ModsTab`
 - Sélecteur de jeu, deux `Listbox` (Bibliothèque / Ordre de déploiement), boutons Activer/Retirer/Monter/Descendre, boutons Déployer/Purger, case « Forcer la copie réelle des fichiers », zone de logs, barre de statut.
-- La case reflète `copie_forcee` du jeu actif (`refresh()`), l'enregistre à chaque clic (`on_copie_toggled` → `set_copie_forcee`) et est transmise à `deploy_mods`. Elle est désactivée sans jeu et pendant une opération.
+- La case reflète `force_copy` du jeu actif (`refresh()`), l'enregistre à chaque clic (`on_force_copy_toggled` → `set_force_copy`) et est transmise à `deploy_mods`. Elle est désactivée sans jeu et pendant une opération.
 - État en mémoire : `load_order`, `available_mods`.
 - `refresh()` : resynchronise avec le disque, retire du `load_order` les mods disparus, persiste si besoin.
 - **Détection automatique** : `_poll()` (toutes les 2 s, `POLL_INTERVAL_MS`) compare `_scan()` (jeu, mods présents, mods déployés) à `_snapshot` et rafraîchit si différent.
@@ -202,8 +204,8 @@ Les chemins lus dans l'état sont vérifiés : tout chemin qui sortirait du doss
 
 ### 4.6 `views/settings_tab.py` — `SettingsTab`
 - Liste des jeux (gauche) et formulaire nom/dossier (droite) + fiche d'information générée par `_build_info` (existence du dossier, mode d'injection, même disque, mods déployés, état de chaque mod).
-- `save_game` délègue à `ajouter_jeu` ou `modifier_jeu`, affiche l'erreur éventuelle, puis appelle `on_change`.
-- `delete_game` : confirmation, appel à `supprimer_jeu`.
+- `save_game` délègue à `add_game` ou `update_game`, affiche l'erreur éventuelle, puis appelle `on_change`.
+- `delete_game` : confirmation, appel à `remove_game`.
 
 ## 5. Développement
 
@@ -220,7 +222,7 @@ uv run python src/modinjector/main.py
 ```powershell
 uv run pytest
 ```
-`tests/test_deployer.py` et `tests/test_config.py` testent le cœur dans des dossiers temporaires : déploiement/purge, priorité du load order, sauvegardes `.org` déjà présentes, fichiers mis à jour par le jeu, purge partielle, déploiement interrompu, état ou config corrompus, ancien format d'état, copie réelle forcée (y compris sur un autre disque).
+`tests/test_deployer.py` et `tests/test_config.py` testent le cœur dans des dossiers temporaires : déploiement/purge, priorité du load order, sauvegardes `.org` déjà présentes, fichiers mis à jour par le jeu, purge partielle, déploiement interrompu, état ou config corrompus, anciens formats d'état et de configuration, copie réelle forcée (y compris sur un autre disque).
 
 ### Qualité du code
 ```powershell

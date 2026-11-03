@@ -14,11 +14,11 @@ TAB_SETTINGS = "Paramètres"
 
 
 def resource_path(relative_path):
-    """Récupère le chemin absolu, que ce soit en mode dev ou exécutable PyInstaller"""
+    """Return the absolute path of a resource, both from source and from the PyInstaller executable."""
     try:
         base_path = sys._MEIPASS  # type: ignore
     except Exception:
-        base_path = os.path.abspath(os.path.dirname(__file__) + "/../..")  # Remonte à la racine du projet
+        base_path = os.path.abspath(os.path.dirname(__file__) + "/../..")  # Go up to the project root
 
     return os.path.join(base_path, relative_path)
 
@@ -40,16 +40,16 @@ class App(ctk.CTk):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
 
-        # --- Bandeau titre ---
+        # --- Title banner ---
         header = ctk.CTkFrame(self, fg_color="transparent", border_width=0)
         header.grid(row=0, column=0, padx=20, pady=(10, 0), sticky="ew")
-        titre = ctk.CTkFrame(header, fg_color="transparent", border_width=0)
-        titre.pack(fill="x")
-        ctk.CTkLabel(titre, text="⚡ MOD", text_color=theme.CYAN, font=theme.font(26, "bold")).pack(side="left")
-        ctk.CTkLabel(titre, text="INJECTOR", text_color=theme.TEXT, font=theme.font(26, "bold")).pack(
+        title_bar = ctk.CTkFrame(header, fg_color="transparent", border_width=0)
+        title_bar.pack(fill="x")
+        ctk.CTkLabel(title_bar, text="⚡ MOD", text_color=theme.CYAN, font=theme.font(26, "bold")).pack(side="left")
+        ctk.CTkLabel(title_bar, text="INJECTOR", text_color=theme.TEXT, font=theme.font(26, "bold")).pack(
             side="left", padx=(4, 0)
         )
-        ctk.CTkLabel(titre, text="// GESTIONNAIRE DE MODS", text_color=theme.TEXT_MUTED, font=theme.font(11)).pack(
+        ctk.CTkLabel(title_bar, text="// GESTIONNAIRE DE MODS", text_color=theme.TEXT_MUTED, font=theme.font(11)).pack(
             side="left", padx=(14, 0), pady=(10, 0)
         )
         ctk.CTkFrame(header, height=2, fg_color=theme.PRIMARY, border_width=0, corner_radius=0).pack(
@@ -79,15 +79,15 @@ class App(ctk.CTk):
             row=2, column=0, sticky="e", padx=20, pady=(0, 8)
         )
 
-        # Premier lancement : aucun jeu configuré -> on ouvre directement les paramètres
-        if not self.cfg.jeux:
+        # First launch: no game configured -> open the settings tab directly
+        if not self.cfg.games:
             self.tabview.set(TAB_SETTINGS)
 
-        if self.cfg.erreur_chargement:
-            self.after(200, lambda: messagebox.showwarning("Configuration", self.cfg.erreur_chargement))
+        if self.cfg.load_error:
+            self.after(200, lambda: messagebox.showwarning("Configuration", self.cfg.load_error))
 
     def on_close(self):
-        # Fermer pendant un déploiement laisserait le jeu dans un état intermédiaire
+        # Closing during a deployment would leave the game in an intermediate state
         if self.mods_view.busy:
             messagebox.showwarning(
                 "Opération en cours",

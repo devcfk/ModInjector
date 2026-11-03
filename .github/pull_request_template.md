@@ -1,10 +1,10 @@
-## Quoi et pourquoi
+## What and why
 
-<!-- Décrivez la modification et sa raison. -->
+<!-- Describe the change and the reason for it. -->
 
-## Vérifications
+## Checks
 
-- [ ] `uv run ruff check .` et `uv run ruff format --check .` passent
-- [ ] `uv run pytest` passe
-- [ ] Testé dans l'application (si l'interface ou le déploiement est concerné)
-- [ ] README / docs mis à jour si nécessaire
+- [ ] `uv run ruff check .` and `uv run ruff format --check .` pass
+- [ ] `uv run pytest` passes
+- [ ] Tested in the application (if the UI or the deployment is affected)
+- [ ] README / docs updated if needed

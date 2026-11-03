@@ -1,29 +1,29 @@
-"""Thème « gaming » de ModInjector : fond sombre, accents néon violet / cyan / magenta."""
+"""ModInjector "gaming" theme: dark background, neon purple / cyan / magenta accents."""
 
 import customtkinter as ctk
 
 # --- Palette ---
-BG = "#0B0D17"  # fond de la fenêtre
-PANEL = "#141829"  # cadres
-PANEL_ALT = "#1B2036"  # cadres imbriqués / survol
-INPUT = "#0F1220"  # champs, listes, consoles
+BG = "#0B0D17"  # window background
+PANEL = "#141829"  # frames
+PANEL_ALT = "#1B2036"  # nested frames / hover
+INPUT = "#0F1220"  # inputs, lists, consoles
 BORDER = "#2A2F4A"
 TEXT = "#E6E9FF"
 TEXT_MUTED = "#7A80A8"
 
-PRIMARY = "#7C3AED"  # violet électrique
+PRIMARY = "#7C3AED"  # electric purple
 PRIMARY_HOVER = "#5B21B6"
 CYAN = "#00E5FF"
 CYAN_HOVER = "#00A8C0"
-SUCCESS = "#00C46A"  # vert néon (déployer)
+SUCCESS = "#00C46A"  # neon green (deploy)
 SUCCESS_HOVER = "#00894A"
-DANGER = "#E0115F"  # magenta (purger / supprimer)
+DANGER = "#E0115F"  # magenta (purge / delete)
 DANGER_HOVER = "#A00C44"
-DANGER_SOFT = "#8B1E4F"  # actions destructives secondaires (retirer)
+DANGER_SOFT = "#8B1E4F"  # secondary destructive actions (remove)
 DANGER_SOFT_HOVER = "#5E1435"
-CONSOLE_TEXT = "#39FF14"  # vert terminal
+CONSOLE_TEXT = "#39FF14"  # terminal green
 
-FONT_FAMILY = "Bahnschrift"  # police Windows au style « tech » (repli automatique si absente)
+FONT_FAMILY = "Bahnschrift"  # "tech"-style Windows font (automatic fallback if missing)
 MONO_FAMILY = "Consolas"
 
 
@@ -36,12 +36,12 @@ def mono_font(size: int = 12) -> ctk.CTkFont:
 
 
 def section_label(master, text: str) -> ctk.CTkLabel:
-    """Titre de section en majuscules, couleur néon."""
+    """Upper-case section title in neon color."""
     return ctk.CTkLabel(master, text=text.upper(), text_color=CYAN, font=font(13, "bold"))
 
 
 def listbox_options() -> dict:
-    """Options communes des tk.Listbox (non gérées par le thème customtkinter)."""
+    """Common tk.Listbox options (not handled by the customtkinter theme)."""
     return dict(
         bg=INPUT,
         fg=TEXT,
@@ -58,12 +58,12 @@ def listbox_options() -> dict:
 
 
 def console_options() -> dict:
-    """Style « terminal » des zones de logs."""
+    """Terminal-like style for the log areas."""
     return dict(fg_color=INPUT, text_color=CONSOLE_TEXT, border_width=1, border_color=BORDER, font=mono_font())
 
 
 def apply():
-    """Applique le thème. À appeler avant la création de la première fenêtre."""
+    """Apply the theme. Must be called before the first window is created."""
     ctk.set_appearance_mode("dark")
     ctk.set_default_color_theme("dark-blue")
     t = ctk.ThemeManager.theme

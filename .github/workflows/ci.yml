@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  qualite:
-    name: Lint et tests
+  quality:
+    name: Lint and tests
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
@@ -23,13 +23,13 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Installer les dépendances
+      - name: Install dependencies
         run: uv sync --locked
 
       - name: Lint (Ruff)
         run: uv run ruff check --output-format=github .
 
-      - name: Formatage (Ruff)
+      - name: Format check (Ruff)
         run: uv run ruff format --check .
 
       - name: Tests (pytest)
