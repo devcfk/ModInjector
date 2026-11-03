@@ -9,7 +9,7 @@ Organize your mods, choose their load order, inject them into your game in one c
 
 ![ModInjector Mods tab](docs/images/06_mods_deploye.png)
 
-> 🌐 The user interface is currently in **French**. An English interface is planned. In this guide, button labels are shown in French with their English meaning.
+> 🌐 The interface is available in **English** and **French**. It follows the Windows display language; you can change it at any time with the 🌐 selector at the top right of the window. The screenshots below show the French interface.
 
 📘 **New here?** The illustrated [user manual](docs/Manuel_utilisateur_ModInjector.docx) (Word, in French) walks you through it step by step.
 
@@ -23,6 +23,7 @@ Organize your mods, choose their load order, inject them into your game in one c
 - 🛡️ **Non-destructive**: original game files are backed up (`.org`) and restored on purge.
 - 🧹 **One-click purge**: removes every mod and puts the game back in its original state.
 - 🕹️ **Gaming UI**: dark theme with neon accents and a terminal-style log.
+- 🌐 **English and French**: follows the Windows language, switchable from the window.
 
 ## 📥 Installation
 
@@ -44,16 +45,16 @@ No Python installation is required.
 ## 🚀 Usage
 
 ### 1. Add a game
-1. Open the **Paramètres** (*Settings*) tab.
-2. Click **➕ Nouveau jeu** (*New game*), enter a name and select the **game's root folder** (*Parcourir* / *Browse* button).
-3. Click **💾 Enregistrer** (*Save*).
+1. Open the **Settings** tab.
+2. Click **➕ New game**, enter a name and select the **game's root folder** (**Browse** button).
+3. Click **💾 Save**.
 
 The info panel tells you whether the folder was found and whether the game is on the same drive as ModInjector.
 
 ![Game details in the Settings tab](docs/images/03_parametres_fiche_jeu.png)
 
 ### 2. Add mods
-1. In the **Mods** tab, click **📂 Ouvrir Mods** (*Open Mods*): the `Mods/<game name>/` folder opens.
+1. In the **Mods** tab, click **📂 Open Mods**: the `Mods/<game name>/` folder opens.
 2. Put each mod **in its own subfolder**. That subfolder must mirror the game's folder structure:
 
 ```
@@ -64,11 +65,11 @@ Mods/MyGame/
             └── my_mod.pak     →  injected as <game folder>/Content/Paks/my_mod.pak
 ```
 
-The list refreshes automatically (or via **🔄 Rafraîchir** / *Refresh*).
+The list refreshes automatically (or via **🔄 Refresh**).
 
 ### 3. Pick and order your mods
-- Select a mod in the **Bibliothèque** (*Library*) and click **Activer ►** (*Enable*).
-- Use **▲ Monter / ▼ Descendre** (*Move up / Move down*) to set the order.
+- Select a mod in the **Library** and click **Enable ►**.
+- Use **▲ Up / ▼ Down** to set the order.
 - ⚠️ **Lower = higher priority**: if two mods change the same file, the lower one wins.
 
 Deployment list legend:
@@ -81,12 +82,12 @@ Deployment list legend:
 ![Pending deployment list](docs/images/05_mods_ordre.png)
 
 ### 4. Deploy
-Click **🚀 DÉPLOYER LES MODS** (*Deploy mods*). The log shows every step (prior purge, conflict resolution, injection).
+Click **🚀 DEPLOY MODS**. The log shows every step (prior purge, conflict resolution, injection).
 
 > You can redeploy at any time: ModInjector always purges the game before injecting the current list.
 
 #### Force real file copies
-Below the deploy buttons, the **Forcer la copie réelle des fichiers** (*Force real file copy instead of hard links*) checkbox is saved per game. When checked, ModInjector really copies the mod files into the game:
+Below the deploy buttons, the **Force real file copy (instead of hard links)** checkbox is saved per game. When checked, ModInjector really copies the mod files into the game:
 
 - the game can then live **on a different drive** than ModInjector;
 - if the game modifies an injected file, the mod's file in your library **is not affected**;
@@ -95,7 +96,7 @@ Below the deploy buttons, the **Forcer la copie réelle des fichiers** (*Force r
 The change applies on the next deployment.
 
 ### 5. Restore the original game
-Click **🧹 PURGER (JEU D'ORIGINE)** (*Purge – original game*) and confirm. Every injected file is removed and the originals are restored.
+Click **🧹 PURGE (ORIGINAL GAME)** and confirm. Every injected file is removed and the originals are restored.
 
 ## ⚠️ Limitations
 
@@ -122,7 +123,7 @@ Yes: it's the backup of an original file replaced by a mod. It gets its original
 ## 📘 Documentation
 
 - [User manual](docs/Manuel_utilisateur_ModInjector.docx) (Word, in French, with screenshots).
-- [Technical documentation](docs/ARCHITECTURE.md) (in French).
+- [Technical documentation](docs/ARCHITECTURE.md).
 
 ## 🛠️ For developers
 

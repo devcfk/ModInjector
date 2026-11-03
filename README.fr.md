@@ -21,6 +21,7 @@ Il vous permet de ranger vos mods, de choisir leur ordre de priorité, puis de l
 - 🛡️ **Non destructif** : les fichiers originaux du jeu sont sauvegardés (`.org`) puis restaurés lors de la purge.
 - 🧹 **Purge en un clic** : retire tous les mods et remet le jeu dans son état d'origine.
 - 🕹️ **Interface « gaming »** : thème sombre aux accents néon, journal façon terminal.
+- 🌐 **Français et anglais** : l'interface suit la langue de Windows, et le sélecteur 🌐 en haut à droite de la fenêtre permet d'en changer à tout moment.
 
 ## 📥 Installation
 
@@ -120,7 +121,7 @@ Oui : c'est la sauvegarde d'un fichier original remplacé par un mod. Il est ren
 ## 📘 Documentation
 
 - [Manuel utilisateur](docs/Manuel_utilisateur_ModInjector.docx) (Word, illustré de captures d'écran).
-- [Documentation technique](docs/ARCHITECTURE.md).
+- [Documentation technique](docs/ARCHITECTURE.md) (en anglais).
 
 ## 🛠️ Pour les développeurs
 

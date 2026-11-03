@@ -29,6 +29,8 @@ def build() -> Path | None:
         str(ROOT / "assets" / "icon.ico"),
         "--add-data",
         f"{ROOT / 'assets' / 'icon.ico'};assets",
+        "--add-data",
+        f"{ROOT / 'src' / 'modinjector' / 'locales'};locales",
         "--collect-all",
         "customtkinter",
         "--distpath",

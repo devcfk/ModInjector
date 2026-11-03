@@ -74,7 +74,7 @@ def test_french_keys_config_is_migrated(tmp_path):
     assert cfg.active_game_name == "Other"
 
     saved = json.loads(config.read_text(encoding="utf-8"))
-    assert saved == {"games": cfg.games, "active_game": "Other"}
+    assert saved == {"games": cfg.games, "active_game": "Other", "language": "auto"}
 
 
 def test_single_game_format_is_migrated(tmp_path):
@@ -92,3 +92,11 @@ def test_single_game_format_is_migrated(tmp_path):
         "force_copy": False,
     }
     assert (mods / "MyGame" / "ModA").is_dir()
+
+
+def test_language_is_saved(tmp_path):
+    config = tmp_path / "data" / "config.json"
+    cfg = ConfigManager(config, tmp_path / "Mods")
+    assert cfg.language == "auto"
+    cfg.set_language("fr")
+    assert ConfigManager(config, tmp_path / "Mods").language == "fr"

@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 
 from core.fsutils import write_json_atomic
+from i18n import AUTO, t
 
 if getattr(sys, "frozen", False):
     APP_DIR = Path(sys.executable).parent
@@ -32,7 +33,8 @@ class ConfigManager:
     config.json format:
     {
         "games": [{"name": "...", "game_dir": "...", "load_order": ["ModA", ...], "force_copy": false}],
-        "active_game": "..."
+        "active_game": "...",
+        "language": "auto"   # "auto" (Windows language), "en" or "fr"
     }
     Each game's mods are stored in Mods/<game name>/<mod>.
     Older formats (French keys from v1.0/v1.1, single-game format) are converted on load.
@@ -43,6 +45,7 @@ class ConfigManager:
         self.mods_root = mods_root
         self.games: list[dict] = []
         self.active_game_name: str = ""
+        self.language: str = AUTO
         self.load_error: str | None = None  # set if config.json could not be read
         self.load()
 
@@ -50,6 +53,7 @@ class ConfigManager:
     def load(self) -> None:
         self.games = []
         self.active_game_name = ""
+        self.language = AUTO
         self.load_error = None
         if not self.config_file.exists():
             return
@@ -57,10 +61,11 @@ class ConfigManager:
             with open(self.config_file, encoding="utf-8") as f:
                 data = json.load(f)
             if not isinstance(data, dict):
-                raise ValueError("format inattendu")
+                raise ValueError(t("state.unexpected_format"))
             if "games" in data:
                 self._load_games(data["games"], "name", "game_dir", "force_copy")
                 self.active_game_name = str(data.get("active_game", ""))
+                self.language = str(data.get("language", AUTO))
             elif "jeux" in data:
                 # v1.0 / v1.1 format, with French keys: converted and saved in the new format
                 self._load_games(data["jeux"], "nom", "dossier", "copie_forcee")
@@ -93,13 +98,13 @@ class ConfigManager:
         copy = self.config_file.with_name(f"{self.config_file.stem}.corrupted-{time.strftime('%Y%m%d-%H%M%S')}.json")
         try:
             self.config_file.replace(copy)
-            self.load_error = f"La configuration était illisible ({error}).\nElle a été mise de côté dans :\n{copy}"
+            self.load_error = t("config.unreadable_moved", error=error, path=copy)
         except OSError:
-            self.load_error = f"La configuration est illisible ({error})."
+            self.load_error = t("config.unreadable", error=error)
         print(self.load_error)
 
     def save(self) -> None:
-        data = {"games": self.games, "active_game": self.active_game_name}
+        data = {"games": self.games, "active_game": self.active_game_name, "language": self.language}
         try:
             write_json_atomic(self.config_file, data)
         except OSError as e:
@@ -108,7 +113,7 @@ class ConfigManager:
     def _migrate_single_game_format(self, data: dict) -> None:
         """Oldest format: a single game (dossier_jeu) with mods directly in Mods/."""
         game_dir = data["dossier_jeu"]
-        name = Path(game_dir).name or "Jeu"
+        name = Path(game_dir).name or t("config.default_game_name")
         self.games = [
             {"name": name, "game_dir": game_dir, "load_order": list(data.get("load_order", [])), "force_copy": False}
         ]
@@ -152,11 +157,11 @@ class ConfigManager:
         """Return an error message, or None on success."""
         name = name.strip()
         if not name or not safe_folder_name(name):
-            return "Le nom du jeu est invalide."
+            return t("game.invalid_name")
         if any(safe_folder_name(n).lower() == safe_folder_name(name).lower() for n in self.game_names()):
-            return "Un jeu portant ce nom existe déjà."
+            return t("game.name_taken")
         if not game_dir or not Path(game_dir).is_dir():
-            return "Le dossier du jeu n'existe pas."
+            return t("game.dir_missing")
         self.games.append({"name": name, "game_dir": game_dir, "load_order": [], "force_copy": False})
         self.mods_dir(name).mkdir(parents=True, exist_ok=True)
         if not self.active_game_name:
@@ -168,25 +173,25 @@ class ConfigManager:
         """Rename a game and/or change its folder. Return an error message, or None on success."""
         game = self.get_game(old_name)
         if game is None:
-            return "Jeu introuvable."
+            return t("game.not_found")
         name = name.strip()
         if not name or not safe_folder_name(name):
-            return "Le nom du jeu est invalide."
+            return t("game.invalid_name")
         if not game_dir or not Path(game_dir).is_dir():
-            return "Le dossier du jeu n'existe pas."
+            return t("game.dir_missing")
 
         if name != old_name:
             if any(
                 n != old_name and safe_folder_name(n).lower() == safe_folder_name(name).lower()
                 for n in self.game_names()
             ):
-                return "Un jeu portant ce nom existe déjà."
+                return t("game.name_taken")
             old_dir, new_dir = self.mods_dir(old_name), self.mods_dir(name)
             if old_dir.exists() and old_dir != new_dir:
                 try:
                     old_dir.rename(new_dir)
                 except OSError as e:
-                    return f"Impossible de renommer le dossier des mods : {e}"
+                    return t("game.cannot_rename_mods", error=e)
             if self.active_game_name == old_name:
                 self.active_game_name = name
 
@@ -200,6 +205,10 @@ class ConfigManager:
         self.games = [g for g in self.games if g["name"] != name]
         if self.active_game_name == name:
             self.active_game_name = self.games[0]["name"] if self.games else ""
+        self.save()
+
+    def set_language(self, language: str) -> None:
+        self.language = language
         self.save()
 
     def set_load_order(self, name: str, load_order: list[str]) -> None:
