@@ -32,6 +32,7 @@ def is_same_drive(path1: Path, path2: Path) -> bool:
     # Sur Windows, resolve() ou absolute() donne "C:\...", donc on compare la lettre du lecteur
     return path1.resolve().drive.upper() == path2.resolve().drive.upper()
 
+
 def load_dir(dossier: Path) -> list[Path]:
     """
     Retourne la liste des chemins relatifs de tous les fichiers d'un mod.
@@ -48,8 +49,10 @@ def load_dir(dossier: Path) -> list[Path]:
             liste_elements.append(rel)
     return liste_elements
 
+
 def state_path(dossier_jeu: Path) -> Path:
     return dossier_jeu / STATE_DIR / STATE_FILE
+
 
 def _normalize_state(data) -> dict:
     """Valide l'état lu sur le disque et convertit l'ancien format si besoin."""
@@ -71,19 +74,22 @@ def _normalize_state(data) -> dict:
         "backups": dict(backups),
     }
 
+
 def read_state(dossier_jeu: Path) -> dict | None:
     """Retourne l'état du déploiement, None si aucun mod n'est déployé. Lève StateError si illisible."""
     fichier_state = state_path(dossier_jeu)
     if not fichier_state.exists():
         return None
     try:
-        with open(fichier_state, "r", encoding="utf-8") as f:
+        with open(fichier_state, encoding="utf-8") as f:
             return _normalize_state(json.load(f))
     except (OSError, ValueError) as e:
         raise StateError(str(e)) from e
 
+
 def _save_state(dossier_jeu: Path, etat: dict) -> None:
     write_json_atomic(state_path(dossier_jeu), etat)
+
 
 def get_deployed_mods(dossier_jeu: Path) -> list[str]:
     """Retourne la liste (ordonnée) des mods actuellement déployés dans le jeu (lecture seule)."""
@@ -93,6 +99,7 @@ def get_deployed_mods(dossier_jeu: Path) -> list[str]:
         return []
     return etat["deployed_mods"] if etat else []
 
+
 def is_deploy_interrupted(dossier_jeu: Path) -> bool:
     """Vrai si un déploiement a été interrompu (crash, fermeture forcée...) : une purge est conseillée."""
     try:
@@ -100,6 +107,7 @@ def is_deploy_interrupted(dossier_jeu: Path) -> bool:
     except StateError:
         return True
     return bool(etat and etat["in_progress"])
+
 
 # ------------------------------------------------------------------ Utilitaires fichiers
 def _in_game(dossier_jeu: Path, rel: str) -> Path | None:
@@ -109,9 +117,11 @@ def _in_game(dossier_jeu: Path, rel: str) -> Path | None:
         return None
     return chemin
 
+
 def _fingerprint(path: Path) -> dict:
     st = path.stat()
     return {"size": st.st_size, "mtime_ns": st.st_mtime_ns}
+
 
 def _unlink(path: Path) -> None:
     """Supprime un fichier, en retirant au besoin l'attribut lecture seule."""
@@ -120,6 +130,7 @@ def _unlink(path: Path) -> None:
     except PermissionError:
         os.chmod(path, stat.S_IWRITE)
         path.unlink()
+
 
 def _free_backup_path(cible: Path) -> Path:
     """Nom de sauvegarde libre : <fichier>.org, sinon <fichier>.1.org, <fichier>.2.org..."""
@@ -130,6 +141,7 @@ def _free_backup_path(cible: Path) -> Path:
         i += 1
     return candidat
 
+
 def _remove_empty_parents(chemin: Path, racine: Path) -> None:
     current_dir = chemin.parent
     while current_dir != racine and current_dir.exists():
@@ -138,6 +150,7 @@ def _remove_empty_parents(chemin: Path, racine: Path) -> None:
             current_dir = current_dir.parent
         except OSError:
             break  # Le dossier n'est pas vide, on arrête de remonter
+
 
 def _check_injected(cible: Path, info: dict) -> tuple[bool, bool]:
     """
@@ -156,6 +169,7 @@ def _check_injected(cible: Path, info: dict) -> tuple[bool, bool]:
     if attendu is None:
         return True, False  # Ancien format : aucune vérification possible
     return _fingerprint(cible) == attendu, False
+
 
 # ------------------------------------------------------------------------------- Purge
 def purge_mods(dossier_jeu: Path, logger=print) -> bool:
@@ -201,8 +215,10 @@ def purge_mods(dossier_jeu: Path, logger=print) -> bool:
             logger(f"[CONSERVÉ] {rel} a été remplacé par le jeu (mise à jour ?) depuis l'injection : il est conservé.")
             continue
         if modifie:
-            logger(f"[ATTENTION] {rel} a été modifié sur place depuis l'injection : le fichier source du mod "
-                   f"({info.get('source')}) l'a été aussi. Réinstallez ce mod si besoin.")
+            logger(
+                f"[ATTENTION] {rel} a été modifié sur place depuis l'injection : le fichier source du mod "
+                f"({info.get('source')}) l'a été aussi. Réinstallez ce mod si besoin."
+            )
         try:
             _unlink(cible)
             logger(f"[SUPPRIMÉ] Fichier injecté retiré : {cible.name}")
@@ -228,8 +244,10 @@ def purge_mods(dossier_jeu: Path, logger=print) -> bool:
             continue
         if rel in conserves or cible.exists():
             # Ne jamais écraser un fichier que le jeu a recréé ou mis à jour
-            logger(f"[ATTENTION] {rel} existe déjà (version du jeu plus récente ?) : "
-                   f"l'ancien original est laissé dans {sauvegarde.name}.")
+            logger(
+                f"[ATTENTION] {rel} existe déjà (version du jeu plus récente ?) : "
+                f"l'ancien original est laissé dans {sauvegarde.name}."
+            )
             continue
         try:
             sauvegarde.rename(cible)
@@ -243,8 +261,10 @@ def purge_mods(dossier_jeu: Path, logger=print) -> bool:
     if erreurs:
         etat["injected"], etat["backups"] = restants_injectes, restants_backups
         _save_state(dossier_jeu, etat)
-        logger(f"[ÉCHEC PARTIEL] {erreurs} élément(s) n'ont pas pu être traités (le jeu est-il lancé ?). "
-               "Fermez le jeu puis relancez la purge.")
+        logger(
+            f"[ÉCHEC PARTIEL] {erreurs} élément(s) n'ont pas pu être traités (le jeu est-il lancé ?). "
+            "Fermez le jeu puis relancez la purge."
+        )
         return False
 
     state_path(dossier_jeu).unlink(missing_ok=True)
@@ -254,6 +274,7 @@ def purge_mods(dossier_jeu: Path, logger=print) -> bool:
         pass
     logger("[SUCCÈS] Le jeu a été entièrement purgé et restauré à son état d'origine.")
     return True
+
 
 # -------------------------------------------------------------------------- Déploiement
 def _inject_file(dossier_jeu: Path, rel: Path, source: Path, etat: dict, logger, copie_forcee: bool = False) -> bool:
@@ -309,8 +330,10 @@ def _inject_file(dossier_jeu: Path, rel: Path, source: Path, etat: dict, logger,
     logger(f"[{'INJECTÉ' if mode == 'link' else 'COPIÉ'}] {cible.name} (Source: {source.parent.name})")
     return True
 
-def deploy_mods(dossier_jeu: Path, dossier_mods_racine: Path, load_order: list[str], logger=print,
-                copie_forcee: bool = False) -> bool:
+
+def deploy_mods(
+    dossier_jeu: Path, dossier_mods_racine: Path, load_order: list[str], logger=print, copie_forcee: bool = False
+) -> bool:
     """
     Déploie les mods en respectant l'ordre de priorité (load_order).
     load_order = ["Mod1", "Mod2"] -> Mod2 est prioritaire et écrase Mod1 si conflit.
@@ -318,7 +341,7 @@ def deploy_mods(dossier_jeu: Path, dossier_mods_racine: Path, load_order: list[s
     L'état est enregistré au fil de l'eau : même interrompu, le déploiement reste purgeable.
     """
     if not copie_forcee and not is_same_drive(dossier_jeu, dossier_mods_racine):
-        logger(f"[ERREUR CRITIQUE] Le jeu et ModInjector NE SONT PAS sur le même disque !")
+        logger("[ERREUR CRITIQUE] Le jeu et ModInjector NE SONT PAS sur le même disque !")
         logger(f"  -> Disque du Jeu : {dossier_jeu.resolve().drive}")
         logger(f"  -> Disque de ModInjector : {dossier_mods_racine.resolve().drive}")
         logger("Veuillez déplacer le dossier entier de ModInjector sur le MÊME disque que votre jeu,")
@@ -351,7 +374,10 @@ def deploy_mods(dossier_jeu: Path, dossier_mods_racine: Path, load_order: list[s
         logger("[INFO] Aucun fichier de mod à déployer.")
         return True
 
-    logger("\n--- ÉTAPE 3 : Déploiement " + ("des copies (copie réelle forcée) ---" if copie_forcee else "des Hard Links ---"))
+    logger(
+        "\n--- ÉTAPE 3 : Déploiement "
+        + ("des copies (copie réelle forcée) ---" if copie_forcee else "des Hard Links ---")
+    )
     etat = {
         "version": STATE_VERSION,
         "deployed_mods": mods_trouves,

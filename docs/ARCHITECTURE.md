@@ -222,6 +222,18 @@ uv run pytest
 ```
 `tests/test_deployer.py` et `tests/test_config.py` testent le cœur dans des dossiers temporaires : déploiement/purge, priorité du load order, sauvegardes `.org` déjà présentes, fichiers mis à jour par le jeu, purge partielle, déploiement interrompu, état ou config corrompus, ancien format d'état, copie réelle forcée (y compris sur un autre disque).
 
+### Qualité du code
+```powershell
+uv run ruff check .          # lint (règles dans [tool.ruff] de pyproject.toml)
+uv run ruff format .         # formatage automatique
+```
+Ruff, pytest et PyInstaller sont des dépendances de développement (groupe `dev`), installées par `uv sync`.
+
+### Intégration continue (GitHub Actions)
+- `.github/workflows/ci.yml` : à chaque push sur `main` et chaque pull request, vérifie le lint, le formatage et les tests sous Windows.
+- `.github/workflows/release.yml` : à chaque tag `V*`, relance les tests, vérifie que le tag correspond à la version de `pyproject.toml`, compile et publie la release avec `ModInjector.zip`.
+- `.github/dependabot.yml` : propose chaque mois la mise à jour des dépendances Python et des actions GitHub.
+
 ### Environnement de test manuel
 `tests/sandbox/` contient des jeux (`sandbox_jeu/*`) et mods (`sandbox_mod/*`) factices. Ajoutez un jeu pointant vers un dossier de `sandbox_jeu` pour tester sans risque.
 Les artefacts générés (`tests/sandbox/data`, `tests/sandbox/Mods`, `.mod_manager`) sont ignorés par git.
@@ -238,9 +250,15 @@ uv run python scripts/build.py
 **Résultat : un unique fichier `livraison/ModInjector.zip`.** Le script renvoie un code de sortie non nul si la compilation échoue.
 
 ### Publier une version
-1. Mettre à jour `src/modinjector/version.py`.
-2. Lancer le build.
-3. Créer une *Release* GitHub et y joindre `livraison/ModInjector.zip` (les binaires ne sont pas versionnés dans git).
+1. Mettre à jour la version dans `pyproject.toml` **et** `src/modinjector/version.py`, puis committer sur `main`.
+2. Créer et pousser le tag correspondant :
+   ```powershell
+   git tag V1.1.0
+   git push origin V1.1.0
+   ```
+3. Le workflow *Release* compile l'exécutable et publie la release GitHub avec `ModInjector.zip` (les binaires ne sont pas versionnés dans git).
+
+Le build local (`uv run python scripts/build.py`) reste possible pour tester l'exécutable.
 
 ## 6. Fichiers versionnés ou non
 
@@ -248,7 +266,7 @@ uv run python scripts/build.py
 |---|---|
 | `src/`, `scripts/`, `assets/`, `docs/`, `tests/sandbox` (fichiers factices) | `.venv/`, `__pycache__/` |
 | `pyproject.toml`, `uv.lock`, `README.md` | `build/`, `dist/`, `livraison/`, `*.spec` |
-| `.gitignore`, `.vscode/extensions.json` | `data/`, `Mods/` (données utilisateur) |
+| `.gitignore`, `.gitattributes`, `.editorconfig`, `.github/`, `.vscode/extensions.json` | `data/`, `Mods/` (données utilisateur) |
 |  | `.idea/`, `.vscode/*`, `.mod_manager/`, `*.org` |
 
 ## 7. Documentation utilisateur

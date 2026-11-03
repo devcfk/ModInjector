@@ -2,10 +2,8 @@ import json
 import os
 
 import pytest
-
 from core import deployer
-from core.deployer import (deploy_mods, get_deployed_mods, is_deploy_interrupted, purge_mods,
-                           read_state, state_path)
+from core.deployer import deploy_mods, get_deployed_mods, is_deploy_interrupted, purge_mods, read_state, state_path
 
 
 class Logs(list):
@@ -35,8 +33,9 @@ def env(tmp_path):
 
 
 def snapshot(dossier):
-    return {str(p.relative_to(dossier)): p.read_text(encoding="utf-8")
-            for p in sorted(dossier.rglob("*")) if p.is_file()}
+    return {
+        str(p.relative_to(dossier)): p.read_text(encoding="utf-8") for p in sorted(dossier.rglob("*")) if p.is_file()
+    }
 
 
 def test_deploiement_puis_purge_restaure_le_jeu(env):
@@ -120,10 +119,12 @@ def test_purge_partielle_conserve_l_etat(env, monkeypatch):
     assert deploy_mods(jeu, mods, ["ModA", "ModB"], Logs())
 
     vrai_unlink = deployer._unlink
+
     def unlink_verrouille(path):
         if path.name == "game.ini":
             raise PermissionError("fichier utilisé par le jeu")
         vrai_unlink(path)
+
     monkeypatch.setattr(deployer, "_unlink", unlink_verrouille)
 
     assert not purge_mods(jeu, Logs())
@@ -142,11 +143,13 @@ def test_deploiement_interrompu_reste_purgeable(env, monkeypatch):
     jeu, mods = env
     avant = snapshot(jeu)
     vrai_link, appels = os.link, []
+
     def link_qui_plante(src, dst):
         if appels:
             raise RuntimeError("crash simulé")
         appels.append(dst)
         vrai_link(src, dst)
+
     monkeypatch.setattr(deployer.os, "link", link_qui_plante)
 
     with pytest.raises(RuntimeError):
@@ -162,8 +165,10 @@ def test_deploiement_interrompu_reste_purgeable(env, monkeypatch):
 def test_echec_de_copie_restaure_l_original(env, monkeypatch):
     jeu, mods = env
     avant = snapshot(jeu)
+
     def echec(*_args):
         raise OSError("lien impossible")
+
     monkeypatch.setattr(deployer.os, "link", echec)
     monkeypatch.setattr(deployer.shutil, "copy2", echec)
 
@@ -174,13 +179,17 @@ def test_echec_de_copie_restaure_l_original(env, monkeypatch):
 
 def test_repli_sur_copie(env, monkeypatch):
     jeu, mods = env
+
     def echec(*_args):
         raise OSError("lien impossible")
+
     monkeypatch.setattr(deployer.os, "link", echec)
 
     assert deploy_mods(jeu, mods, ["ModB"], Logs())
     cible = jeu / "config" / "game.ini"
-    assert cible.read_text(encoding="utf-8") == "B" and not os.path.samefile(cible, mods / "ModB" / "config" / "game.ini")
+    assert cible.read_text(encoding="utf-8") == "B" and not os.path.samefile(
+        cible, mods / "ModB" / "config" / "game.ini"
+    )
     assert purge_mods(jeu, Logs())
     assert cible.read_text(encoding="utf-8") == "original"
 
@@ -205,11 +214,16 @@ def test_ancien_format_d_etat(env):
     # Simule un déploiement fait par l'ancienne version (sans empreintes)
     (jeu / "config" / "game.ini").rename(jeu / "config" / "game.ini.org")
     os.link(mods / "ModB" / "config" / "game.ini", jeu / "config" / "game.ini")
-    ecrire(state_path(jeu), json.dumps({
-        "deployed_mods": ["ModB"],
-        "injected_files": [os.path.join("config", "game.ini")],
-        "org_files": [os.path.join("config", "game.ini")],
-    }))
+    ecrire(
+        state_path(jeu),
+        json.dumps(
+            {
+                "deployed_mods": ["ModB"],
+                "injected_files": [os.path.join("config", "game.ini")],
+                "org_files": [os.path.join("config", "game.ini")],
+            }
+        ),
+    )
 
     assert get_deployed_mods(jeu) == ["ModB"]
     assert purge_mods(jeu, Logs())
@@ -246,8 +260,10 @@ def test_mod_introuvable_ignore(env):
 def test_copie_forcee_n_utilise_pas_de_hard_link(env, monkeypatch):
     jeu, mods = env
     avant = snapshot(jeu)
+
     def interdit(*_args):
         raise AssertionError("os.link ne doit pas être appelé")
+
     monkeypatch.setattr(deployer.os, "link", interdit)
 
     logs = Logs()

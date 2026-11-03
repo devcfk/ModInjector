@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BUILD_DIR = ROOT / "build"          # Dossier temporaire (supprimé en fin de build)
+BUILD_DIR = ROOT / "build"  # Dossier temporaire (supprimé en fin de build)
 LIVRAISON_DIR = ROOT / "livraison"  # Contient uniquement le livrable final
 APP_NAME = "ModInjector"
 ZIP_BASE = LIVRAISON_DIR / APP_NAME
@@ -15,17 +15,28 @@ def build() -> Path | None:
     print("[1/3] Démarrage de la compilation avec PyInstaller...")
     exe_dir = BUILD_DIR / "exe"
     command = [
-        "uv", "run", "python", "-m", "PyInstaller",
+        "uv",
+        "run",
+        "python",
+        "-m",
+        "PyInstaller",
         "--noconsole",
         "--onefile",
         "--noconfirm",
-        "--name", APP_NAME,
-        "--icon", str(ROOT / "assets" / "icon.ico"),
-        "--add-data", f"{ROOT / 'assets' / 'icon.ico'};assets",
-        "--collect-all", "customtkinter",
-        "--distpath", str(exe_dir),
-        "--workpath", str(BUILD_DIR / "work"),
-        "--specpath", str(BUILD_DIR),
+        "--name",
+        APP_NAME,
+        "--icon",
+        str(ROOT / "assets" / "icon.ico"),
+        "--add-data",
+        f"{ROOT / 'assets' / 'icon.ico'};assets",
+        "--collect-all",
+        "customtkinter",
+        "--distpath",
+        str(exe_dir),
+        "--workpath",
+        str(BUILD_DIR / "work"),
+        "--specpath",
+        str(BUILD_DIR),
         str(ROOT / "src" / "modinjector" / "main.py"),
     ]
 

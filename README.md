@@ -1,5 +1,7 @@
 # ModInjector
 
+[![CI](https://github.com/devcfk/ModInjector/actions/workflows/ci.yml/badge.svg)](https://github.com/devcfk/ModInjector/actions/workflows/ci.yml)
+
 **ModInjector** est un gestionnaire de mods simple et non destructif pour jeux vidéo sous **Windows**.
 Il vous permet de ranger vos mods, de choisir leur ordre de priorité, puis de les injecter dans votre jeu en un clic — et de **restaurer le jeu d'origine** tout aussi facilement.
 
@@ -129,7 +131,7 @@ uv sync
 uv run python src/modinjector/main.py
 ```
 
-Tests automatisés : `uv run pytest`.
+Tests automatisés : `uv run pytest` — lint et formatage : `uv run ruff check .` / `uv run ruff format .` (vérifiés automatiquement par la CI GitHub).
 
 ## 📄 Licence
 

@@ -53,7 +53,7 @@ class ConfigManager:
         if not self.config_file.exists():
             return
         try:
-            with open(self.config_file, "r", encoding="utf-8") as f:
+            with open(self.config_file, encoding="utf-8") as f:
                 data = json.load(f)
             if not isinstance(data, dict):
                 raise ValueError("format inattendu")
@@ -84,8 +84,9 @@ class ConfigManager:
         copie = self.config_file.with_name(f"{self.config_file.stem}.corrompu-{time.strftime('%Y%m%d-%H%M%S')}.json")
         try:
             self.config_file.replace(copie)
-            self.erreur_chargement = (f"La configuration était illisible ({erreur}).\n"
-                                      f"Elle a été mise de côté dans :\n{copie}")
+            self.erreur_chargement = (
+                f"La configuration était illisible ({erreur}).\nElle a été mise de côté dans :\n{copie}"
+            )
         except OSError:
             self.erreur_chargement = f"La configuration est illisible ({erreur})."
         print(self.erreur_chargement)
@@ -101,8 +102,9 @@ class ConfigManager:
         """Ancien format : un seul jeu (dossier_jeu) et des mods directement dans Mods/."""
         dossier = data["dossier_jeu"]
         nom = Path(dossier).name or "Jeu"
-        self.jeux = [{"nom": nom, "dossier": dossier, "load_order": list(data.get("load_order", [])),
-                      "copie_forcee": False}]
+        self.jeux = [
+            {"nom": nom, "dossier": dossier, "load_order": list(data.get("load_order", [])), "copie_forcee": False}
+        ]
         self.jeu_actif_nom = nom
 
         # Déplace les mods existants (Mods/<mod>) vers Mods/<jeu>/<mod>

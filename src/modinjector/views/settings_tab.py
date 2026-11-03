@@ -1,12 +1,11 @@
+import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox
-import tkinter as tk
 
 import customtkinter as ctk
-
 import theme
 from core.config import ConfigManager
-from core.deployer import is_same_drive, get_deployed_mods, is_deploy_interrupted
+from core.deployer import get_deployed_mods, is_deploy_interrupted, is_same_drive
 
 
 class SettingsTab(ctk.CTkFrame):
@@ -35,7 +34,9 @@ class SettingsTab(ctk.CTkFrame):
         self.listbox = tk.Listbox(left, width=26, **theme.listbox_options())
         self.listbox.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="nsew")
         self.listbox.bind("<<ListboxSelect>>", self.on_select)
-        ctk.CTkButton(left, text="➕ Nouveau jeu", command=self.new_game).grid(row=2, column=0, padx=10, pady=(0, 10), sticky="ew")
+        ctk.CTkButton(left, text="➕ Nouveau jeu", command=self.new_game).grid(
+            row=2, column=0, padx=10, pady=(0, 10), sticky="ew"
+        )
 
         # --- Détails (droite) ---
         right = ctk.CTkFrame(self)
@@ -43,25 +44,42 @@ class SettingsTab(ctk.CTkFrame):
         right.grid_columnconfigure(1, weight=1)
         right.grid_rowconfigure(5, weight=1)
 
-        theme.section_label(right, "Détails du jeu").grid(row=0, column=0, columnspan=3, padx=10, pady=(10, 5), sticky="w")
+        theme.section_label(right, "Détails du jeu").grid(
+            row=0, column=0, columnspan=3, padx=10, pady=(10, 5), sticky="w"
+        )
 
         ctk.CTkLabel(right, text="Nom :").grid(row=1, column=0, padx=10, pady=5, sticky="w")
-        ctk.CTkEntry(right, textvariable=self.nom_var, placeholder_text="Ex: eFootball 2027").grid(row=1, column=1, columnspan=2, padx=10, pady=5, sticky="ew")
+        ctk.CTkEntry(right, textvariable=self.nom_var, placeholder_text="Ex: eFootball 2027").grid(
+            row=1, column=1, columnspan=2, padx=10, pady=5, sticky="ew"
+        )
 
         ctk.CTkLabel(right, text="Dossier :").grid(row=2, column=0, padx=10, pady=5, sticky="w")
-        ctk.CTkEntry(right, textvariable=self.dossier_var, placeholder_text="Ex: C:/Jeux/MonJeu").grid(row=2, column=1, padx=10, pady=5, sticky="ew")
-        ctk.CTkButton(right, text="Parcourir", width=90, command=self.browse,
-                      fg_color="transparent", border_width=1, border_color=theme.CYAN, hover_color=theme.PANEL_ALT).grid(row=2, column=2, padx=10, pady=5)
+        ctk.CTkEntry(right, textvariable=self.dossier_var, placeholder_text="Ex: C:/Jeux/MonJeu").grid(
+            row=2, column=1, padx=10, pady=5, sticky="ew"
+        )
+        ctk.CTkButton(
+            right,
+            text="Parcourir",
+            width=90,
+            command=self.browse,
+            fg_color="transparent",
+            border_width=1,
+            border_color=theme.CYAN,
+            hover_color=theme.PANEL_ALT,
+        ).grid(row=2, column=2, padx=10, pady=5)
 
         btns = ctk.CTkFrame(right, fg_color="transparent", border_width=0)
         btns.grid(row=3, column=0, columnspan=3, padx=10, pady=10, sticky="w")
         self.btn_save = ctk.CTkButton(btns, text="💾 Enregistrer", command=self.save_game)
         self.btn_save.pack(side="left", padx=(0, 10))
-        self.btn_delete = ctk.CTkButton(btns, text="🗑 Supprimer", command=self.delete_game,
-                                        fg_color=theme.DANGER, hover_color=theme.DANGER_HOVER)
+        self.btn_delete = ctk.CTkButton(
+            btns, text="🗑 Supprimer", command=self.delete_game, fg_color=theme.DANGER, hover_color=theme.DANGER_HOVER
+        )
         self.btn_delete.pack(side="left")
 
-        theme.section_label(right, "Informations").grid(row=4, column=0, columnspan=3, padx=10, pady=(10, 5), sticky="w")
+        theme.section_label(right, "Informations").grid(
+            row=4, column=0, columnspan=3, padx=10, pady=(10, 5), sticky="w"
+        )
         self.info_box = ctk.CTkTextbox(right, state="disabled", **{**theme.console_options(), "text_color": theme.CYAN})
         self.info_box.grid(row=5, column=0, columnspan=3, padx=10, pady=(0, 10), sticky="nsew")
 
@@ -120,7 +138,11 @@ class SettingsTab(ctk.CTkFrame):
             else:
                 texte = "✘ NON — déplacez ModInjector sur le disque du jeu ou forcez la copie réelle"
             lignes.append(f"Même disque                  : {texte}")
-        lignes.append(f"Mods dans le jeu             : {len(deployed)} déployé(s)" if deployed else "Mods dans le jeu             : aucun (jeu d'origine)")
+        lignes.append(
+            f"Mods dans le jeu             : {len(deployed)} déployé(s)"
+            if deployed
+            else "Mods dans le jeu             : aucun (jeu d'origine)"
+        )
         if dossier.exists() and is_deploy_interrupted(dossier):
             lignes.append("État du déploiement          : ⚠ interrompu ou illisible — purgez le jeu puis redéployez")
 
@@ -189,7 +211,8 @@ class SettingsTab(ctk.CTkFrame):
             "Supprimer le jeu",
             f"Retirer « {self.selected} » de ModInjector ?\n\n"
             "Les fichiers du jeu et les mods dans le dossier Mods ne sont pas supprimés.\n"
-            "Pensez à purger le jeu avant si des mods y sont encore déployés."):
+            "Pensez à purger le jeu avant si des mods y sont encore déployés.",
+        ):
             return
         self.cfg.supprimer_jeu(self.selected)
         self.reload_list(select=self.cfg.jeu_actif_nom)
