@@ -9,10 +9,10 @@ import customtkinter as ctk
 import theme
 from core.config import ConfigManager
 from core.deployer import deploy_mods, get_deployed_mods, is_deploy_interrupted, purge_mods
+from i18n import t
 
 POLL_INTERVAL_MS = 2000
 LOG_INTERVAL_MS = 100
-NO_GAME = "Aucun jeu"
 _TASK_DONE = object()  # end-of-task marker in the log queue
 
 
@@ -22,7 +22,7 @@ class ModsTab(ctk.CTkFrame):
     def __init__(self, master, cfg: ConfigManager):
         super().__init__(master, fg_color="transparent", border_width=0)
         self.cfg = cfg
-        self.game_var = ctk.StringVar(value=NO_GAME)
+        self.game_var = ctk.StringVar(value=t("mods.no_game"))
         self.force_copy_var = ctk.BooleanVar(value=False)  # real copy instead of hard links (per game)
         self.load_order: list[str] = []
         self.available_mods: list[str] = []
@@ -46,14 +46,14 @@ class ModsTab(ctk.CTkFrame):
         top.grid(row=0, column=0, padx=10, pady=(10, 5), sticky="ew")
         top.grid_columnconfigure(1, weight=1)
 
-        theme.section_label(top, "Jeu :").grid(row=0, column=0, padx=10, pady=10)
+        theme.section_label(top, t("mods.game_label")).grid(row=0, column=0, padx=10, pady=10)
         self.game_combo = ctk.CTkComboBox(
-            top, variable=self.game_var, values=[NO_GAME], state="readonly", command=self.on_game_selected
+            top, variable=self.game_var, values=[t("mods.no_game")], state="readonly", command=self.on_game_selected
         )
         self.game_combo.grid(row=0, column=1, padx=5, pady=10, sticky="ew")
         btn_refresh = ctk.CTkButton(
             top,
-            text="🔄 Rafraîchir",
+            text=t("mods.refresh"),
             width=110,
             command=self.refresh,
             fg_color="transparent",
@@ -64,7 +64,7 @@ class ModsTab(ctk.CTkFrame):
         btn_refresh.grid(row=0, column=2, padx=5, pady=10)
         ctk.CTkButton(
             top,
-            text="📂 Ouvrir Mods",
+            text=t("mods.open_folder"),
             width=110,
             command=self.open_mods_folder,
             fg_color="transparent",
@@ -81,17 +81,17 @@ class ModsTab(ctk.CTkFrame):
         frame_mods.grid_columnconfigure(2, weight=1)
         frame_mods.grid_rowconfigure(1, weight=1)
 
-        theme.section_label(frame_mods, "Bibliothèque (hors liste de déploiement)").grid(row=0, column=0, pady=(10, 5))
+        theme.section_label(frame_mods, t("mods.library")).grid(row=0, column=0, pady=(10, 5))
         self.list_available = self._make_listbox(frame_mods)
         self.list_available.grid(row=1, column=0, padx=(15, 5), pady=(0, 15), sticky="nsew")
 
         frame_transfer = ctk.CTkFrame(frame_mods, fg_color="transparent", border_width=0)
         frame_transfer.grid(row=1, column=1, padx=5)
-        btn_enable = ctk.CTkButton(frame_transfer, text="Activer ►", width=90, command=self.activate_mod)
+        btn_enable = ctk.CTkButton(frame_transfer, text=t("mods.enable"), width=90, command=self.activate_mod)
         btn_enable.pack(pady=5)
         btn_remove = ctk.CTkButton(
             frame_transfer,
-            text="◄ Retirer",
+            text=t("mods.remove"),
             width=90,
             command=self.deactivate_mod,
             fg_color=theme.DANGER_SOFT,
@@ -99,17 +99,15 @@ class ModsTab(ctk.CTkFrame):
         )
         btn_remove.pack(pady=5)
 
-        theme.section_label(frame_mods, "Ordre de déploiement (plus bas = prioritaire)").grid(
-            row=0, column=2, pady=(10, 5)
-        )
+        theme.section_label(frame_mods, t("mods.order")).grid(row=0, column=2, pady=(10, 5))
         self.list_active = self._make_listbox(frame_mods)
         self.list_active.grid(row=1, column=2, padx=5, pady=(0, 15), sticky="nsew")
 
         frame_order = ctk.CTkFrame(frame_mods, fg_color="transparent", border_width=0)
         frame_order.grid(row=1, column=3, padx=(0, 15))
-        btn_up = ctk.CTkButton(frame_order, text="▲ Monter", width=70, command=self.move_up)
+        btn_up = ctk.CTkButton(frame_order, text=t("mods.up"), width=70, command=self.move_up)
         btn_up.pack(pady=5)
-        btn_down = ctk.CTkButton(frame_order, text="▼ Descendre", width=70, command=self.move_down)
+        btn_down = ctk.CTkButton(frame_order, text=t("mods.down"), width=70, command=self.move_down)
         btn_down.pack(pady=5)
 
         # --- Main actions ---
@@ -118,7 +116,7 @@ class ModsTab(ctk.CTkFrame):
         frame_actions.grid_columnconfigure((0, 1), weight=1)
         btn_deploy = ctk.CTkButton(
             frame_actions,
-            text="🚀 DÉPLOYER LES MODS",
+            text=t("mods.deploy"),
             command=self.action_deploy,
             fg_color=theme.SUCCESS,
             hover_color=theme.SUCCESS_HOVER,
@@ -128,7 +126,7 @@ class ModsTab(ctk.CTkFrame):
         btn_deploy.grid(row=0, column=0, padx=15, pady=(15, 8), sticky="ew")
         btn_purge = ctk.CTkButton(
             frame_actions,
-            text="🧹 PURGER (JEU D'ORIGINE)",
+            text=t("mods.purge"),
             command=self.action_purge,
             fg_color=theme.DANGER,
             hover_color=theme.DANGER_HOVER,
@@ -140,7 +138,7 @@ class ModsTab(ctk.CTkFrame):
             frame_actions,
             variable=self.force_copy_var,
             command=self.on_force_copy_toggled,
-            text="Forcer la copie réelle des fichiers (au lieu des hard links)",
+            text=t("mods.force_copy"),
         )
         self.force_copy_check.grid(row=1, column=0, columnspan=2, padx=15, pady=(0, 12), sticky="w")
         self._action_widgets += [
@@ -192,16 +190,16 @@ class ModsTab(ctk.CTkFrame):
         if self.busy:
             return  # Refreshed automatically when the current task ends
         names = self.cfg.game_names()
-        self.game_combo.configure(values=names or [NO_GAME])
+        self.game_combo.configure(values=names or [t("mods.no_game")])
         game = self._game()
-        self.game_var.set(game["name"] if game else NO_GAME)
+        self.game_var.set(game["name"] if game else t("mods.no_game"))
 
         self.force_copy_var.set(bool(game and game.get("force_copy")))
         self.force_copy_check.configure(state="normal" if game else "disabled")
         if game is None:
             self.load_order, self.available_mods = [], []
             self.update_listboxes()
-            self.lbl_status.configure(text="Aucun jeu configuré : ajoutez-en un dans l'onglet Paramètres.")
+            self.lbl_status.configure(text=t("status.no_game_configured"))
             self._snapshot = None
             return
 
@@ -249,15 +247,13 @@ class ModsTab(ctk.CTkFrame):
         if game is None:
             return
         if is_deploy_interrupted(Path(game["game_dir"])):
-            text = "⚠ Le dernier déploiement a été interrompu ou son état est illisible : lancez une purge puis redéployez."
+            text = t("status.interrupted")
         elif not deployed:
-            text = "Aucun mod déployé. ⏳ = en liste de déploiement, en attente de déploiement."
+            text = t("status.nothing_deployed")
         elif deployed == self.load_order:
-            text = f"✔ À jour : {len(deployed)} mod(s) déployé(s)."
+            text = t("status.up_to_date", count=len(deployed))
         else:
-            text = (
-                f"⏳ Modifications en attente ({len(deployed)} mod(s) actuellement déployé(s)) : cliquez sur Déployer."
-            )
+            text = t("status.pending", count=len(deployed))
         self.lbl_status.configure(text=text)
 
     def _save_order(self):
@@ -278,7 +274,7 @@ class ModsTab(ctk.CTkFrame):
 
     def open_mods_folder(self):
         if self._game() is None:
-            messagebox.showwarning("Erreur", "Aucun jeu sélectionné.")
+            messagebox.showwarning(t("common.error"), t("mods.no_game_selected"))
             return
         mods_dir = self._mods_dir()
         mods_dir.mkdir(parents=True, exist_ok=True)
@@ -358,14 +354,14 @@ class ModsTab(ctk.CTkFrame):
         self.busy = True
         for widget in self._action_widgets:
             widget.configure(state="disabled")
-        self.lbl_status.configure(text=f"⏳ {title} en cours, veuillez patienter...")
+        self.lbl_status.configure(text=t("task.running", title=title))
         self.log_clear()
 
         def worker():
             try:
                 func()
             except Exception as e:
-                self.log(f"[ERREUR INATTENDUE] {e}")
+                self.log(t("task.unexpected_error", error=e))
             finally:
                 self._log_queue.put(_TASK_DONE)
 
@@ -383,27 +379,27 @@ class ModsTab(ctk.CTkFrame):
             return
         game = self._game()
         if game is None:
-            messagebox.showwarning("Erreur", "Veuillez configurer et sélectionner un jeu (onglet Paramètres).")
+            messagebox.showwarning(t("common.error"), t("mods.configure_game_first"))
             return
         if not self.load_order:
-            messagebox.showwarning("Erreur", "Aucun mod n'est dans la liste de déploiement.")
+            messagebox.showwarning(t("common.error"), t("mods.empty_order"))
             return
         game_dir = Path(game["game_dir"])
         if not game_dir.exists():
-            messagebox.showerror("Erreur", "Le dossier du jeu spécifié n'existe pas.")
+            messagebox.showerror(t("common.error"), t("mods.game_dir_missing"))
             return
 
         mods_dir, load_order = self._mods_dir(), list(self.load_order)
         force_copy = bool(game.get("force_copy"))
 
         def task():
-            self.log("=== LANCEMENT DU DÉPLOIEMENT ===")
-            self.log(f"Jeu cible : {game['name']} ({game_dir})")
+            self.log(t("deploy.start"))
+            self.log(t("deploy.target", name=game["name"], path=game_dir))
             if force_copy:
-                self.log("Mode : copie réelle des fichiers (hard links désactivés)")
+                self.log(t("deploy.copy_mode"))
             deploy_mods(game_dir, mods_dir, load_order, logger=self.log, force_copy=force_copy)
 
-        self._run_task("Déploiement", task)
+        self._run_task(t("task.deploy"), task)
 
     def action_purge(self):
         if self.busy:
@@ -413,17 +409,16 @@ class ModsTab(ctk.CTkFrame):
             return
         game_dir = Path(game["game_dir"])
         if not game_dir.exists():
-            messagebox.showerror("Erreur", "Le dossier du jeu spécifié n'existe pas.")
+            messagebox.showerror(t("common.error"), t("mods.game_dir_missing"))
             return
         if not messagebox.askyesno(
-            "Confirmation de Purge",
-            f"Voulez-vous vraiment retirer tous les mods de « {game['name']} » "
-            "et restaurer le jeu à son état d'origine ?",
+            t("purge.confirm_title"),
+            t("purge.confirm", name=game["name"]),
         ):
             return
 
         def task():
-            self.log("=== LANCEMENT DE LA PURGE ===")
+            self.log(t("purge.start"))
             purge_mods(game_dir, logger=self.log)
 
-        self._run_task("Purge", task)
+        self._run_task(t("task.purge"), task)

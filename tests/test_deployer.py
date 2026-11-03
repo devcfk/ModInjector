@@ -94,7 +94,7 @@ def test_file_replaced_by_game_is_kept(env):
     assert purge_mods(game, logs)
     assert target.read_text(encoding="utf-8") == "patched game version"
     assert (game / "config" / "game.ini.org").read_text(encoding="utf-8") == "original"  # old original left aside
-    assert logs.contains("[CONSERVÉ]")
+    assert logs.contains("[KEPT]")
     assert (mods / "ModB" / "config" / "game.ini").read_text(encoding="utf-8") == "B"
 
 
@@ -108,7 +108,7 @@ def test_in_place_change_is_reported(env):
 
     logs = Logs()
     assert purge_mods(game, logs)
-    assert logs.contains("modifié sur place")
+    assert logs.contains("modified in place")
     assert target.read_text(encoding="utf-8") == "original"
 
 
@@ -237,7 +237,7 @@ def test_paths_outside_game_are_ignored(env, tmp_path):
     logs = Logs()
     assert purge_mods(game, logs)
     assert victim.exists()
-    assert logs.contains("hors du dossier du jeu")
+    assert logs.contains("outside the game folder")
 
 
 def test_mod_manager_folder_inside_mod_is_ignored(env):
@@ -251,7 +251,7 @@ def test_missing_mod_is_skipped(env):
     game, mods = env
     logs = Logs()
     assert deploy_mods(game, mods, ["Ghost", "ModA"], logs)
-    assert logs.contains("introuvable")
+    assert logs.contains("not found")
     assert get_deployed_mods(game) == ["ModA"]
 
 
@@ -270,7 +270,7 @@ def test_force_copy_uses_no_hard_link(env, monkeypatch):
     assert target.read_text(encoding="utf-8") == "B"
     assert not os.path.samefile(target, mods / "ModB" / "config" / "game.ini")
     assert {info["mode"] for info in read_state(game)["injected"].values()} == {"copy"}
-    assert not logs.contains("Hard link échoué")
+    assert not logs.contains("Hard link failed")
 
     assert purge_mods(game, Logs())
     assert snapshot(game) == before
@@ -282,7 +282,7 @@ def test_force_copy_allows_another_drive(env, monkeypatch):
 
     logs = Logs()
     assert not deploy_mods(game, mods, ["ModB"], logs)
-    assert logs.contains("Forcer la copie réelle")
+    assert logs.contains("Force real file copy")
     assert get_deployed_mods(game) == []
 
     assert deploy_mods(game, mods, ["ModB"], Logs(), force_copy=True)
