@@ -97,12 +97,13 @@ Constantes de chemins :
 ```json
 {
   "jeux": [
-    { "nom": "MonJeu", "dossier": "D:/Jeux/MonJeu", "load_order": ["ModA", "ModB"] }
+    { "nom": "MonJeu", "dossier": "D:/Jeux/MonJeu", "load_order": ["ModA", "ModB"], "copie_forcee": false }
   ],
   "jeu_actif": "MonJeu"
 }
 ```
 Les mods d'un jeu sont stockés dans `Mods/<nom_dossier_valide(nom)>/<mod>/`.
+`copie_forcee` (absent des anciennes configurations, `false` par défaut) force la copie réelle des fichiers au déploiement de ce jeu.
 
 | Méthode | Rôle |
 |---|---|
@@ -112,6 +113,7 @@ Les mods d'un jeu sont stockés dans `Mods/<nom_dossier_valide(nom)>/<mod>/`.
 | `mods_dir(nom)` | Dossier de mods d'un jeu. |
 | `ajouter_jeu()`, `modifier_jeu()`, `supprimer_jeu()` | CRUD ; renvoient un message d'erreur ou `None`. Le renommage déplace aussi le dossier de mods. La suppression conserve les mods sur disque. |
 | `set_load_order()` | Met à jour et persiste l'ordre d'un jeu. |
+| `set_copie_forcee()` | Active ou désactive la copie réelle forcée pour un jeu, et persiste. |
 
 ### 4.4 `core/deployer.py`
 Fonctions utilitaires :
@@ -141,10 +143,12 @@ L'état est toujours écrit de façon **atomique** (`core/fsutils.write_json_ato
 - `in_progress` : vaut `true` pendant le déploiement ; s'il reste à `true`, le déploiement a été interrompu.
 - L'ancien format (`injected_files` / `org_files`) est encore lu et purgé correctement.
 
-#### `deploy_mods(dossier_jeu, dossier_mods_racine, load_order, logger)`
+#### `deploy_mods(dossier_jeu, dossier_mods_racine, load_order, logger, copie_forcee=False)`
+Avec `copie_forcee=True`, aucun hard link n'est tenté : chaque fichier est copié (`shutil.copy2`, mode `copy` dans l'état) et la vérification « même disque » est sautée. La purge traite ces copies comme les copies de repli (comparaison d'empreinte).
+
 ```mermaid
 flowchart TD
-    A[Même disque ?] -- non --> X[Erreur, return False]
+    A[Copie forcée ou même disque ?] -- non --> X[Erreur, return False]
     A -- oui --> B[purge_mods]
     B -- échec --> X2[Déploiement annulé, return False]
     B -- ok --> C[Pour chaque mod du load_order : final_files_map rel -> source]
@@ -156,8 +160,10 @@ flowchart TD
     G -- oui --> H[Renommer vers un nom .org libre + noter dans backups]
     G -- non --> I
     H --> I[Créer dossiers parents]
-    I --> J[os.link source -> cible]
-    J -- OSError --> K[Fallback shutil.copy2, copie partielle supprimée si échec]
+    I --> CF{Copie forcée ?}
+    CF -- oui --> K
+    CF -- non --> J[os.link source -> cible]
+    J -- OSError --> K[shutil.copy2, copie partielle supprimée si échec]
     J --> L[noter dans injected avec empreinte]
     K --> L
     L --> M[Sauvegarde de l'état tous les 25 fichiers]
@@ -183,7 +189,8 @@ Les chemins lus dans l'état sont vérifiés : tout chemin qui sortirait du doss
 > Le déploiement commence toujours par une purge : il est **idempotent**.
 
 ### 4.5 `views/mods_tab.py` — `ModsTab`
-- Sélecteur de jeu, deux `Listbox` (Bibliothèque / Ordre de déploiement), boutons Activer/Retirer/Monter/Descendre, boutons Déployer/Purger, zone de logs, barre de statut.
+- Sélecteur de jeu, deux `Listbox` (Bibliothèque / Ordre de déploiement), boutons Activer/Retirer/Monter/Descendre, boutons Déployer/Purger, case « Forcer la copie réelle des fichiers », zone de logs, barre de statut.
+- La case reflète `copie_forcee` du jeu actif (`refresh()`), l'enregistre à chaque clic (`on_copie_toggled` → `set_copie_forcee`) et est transmise à `deploy_mods`. Elle est désactivée sans jeu et pendant une opération.
 - État en mémoire : `load_order`, `available_mods`.
 - `refresh()` : resynchronise avec le disque, retire du `load_order` les mods disparus, persiste si besoin.
 - **Détection automatique** : `_poll()` (toutes les 2 s, `POLL_INTERVAL_MS`) compare `_scan()` (jeu, mods présents, mods déployés) à `_snapshot` et rafraîchit si différent.
@@ -194,7 +201,7 @@ Les chemins lus dans l'état sont vérifiés : tout chemin qui sortirait du doss
 - La barre de statut signale un déploiement interrompu (`is_deploy_interrupted`) et invite à purger.
 
 ### 4.6 `views/settings_tab.py` — `SettingsTab`
-- Liste des jeux (gauche) et formulaire nom/dossier (droite) + fiche d'information générée par `_build_info` (existence du dossier, même disque, mods déployés, état de chaque mod).
+- Liste des jeux (gauche) et formulaire nom/dossier (droite) + fiche d'information générée par `_build_info` (existence du dossier, mode d'injection, même disque, mods déployés, état de chaque mod).
 - `save_game` délègue à `ajouter_jeu` ou `modifier_jeu`, affiche l'erreur éventuelle, puis appelle `on_change`.
 - `delete_game` : confirmation, appel à `supprimer_jeu`.
 
@@ -213,7 +220,7 @@ uv run python src/modinjector/main.py
 ```powershell
 uv run pytest
 ```
-`tests/test_deployer.py` et `tests/test_config.py` testent le cœur dans des dossiers temporaires : déploiement/purge, priorité du load order, sauvegardes `.org` déjà présentes, fichiers mis à jour par le jeu, purge partielle, déploiement interrompu, état ou config corrompus, ancien format d'état.
+`tests/test_deployer.py` et `tests/test_config.py` testent le cœur dans des dossiers temporaires : déploiement/purge, priorité du load order, sauvegardes `.org` déjà présentes, fichiers mis à jour par le jeu, purge partielle, déploiement interrompu, état ou config corrompus, ancien format d'état, copie réelle forcée (y compris sur un autre disque).
 
 ### Environnement de test manuel
 `tests/sandbox/` contient des jeux (`sandbox_jeu/*`) et mods (`sandbox_mod/*`) factices. Ajoutez un jeu pointant vers un dossier de `sandbox_jeu` pour tester sans risque.

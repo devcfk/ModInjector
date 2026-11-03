@@ -13,6 +13,7 @@ Il vous permet de ranger vos mods, de choisir leur ordre de priorité, puis de l
 - 📚 **Bibliothèque de mods** : déposez vos mods dans un dossier, ModInjector les détecte automatiquement.
 - 🔢 **Ordre de chargement (load order)** : en cas de conflit entre deux mods, celui placé le plus bas dans la liste est prioritaire.
 - ⚡ **Injection instantanée** : utilise des *hard links* (aucune copie, 0 octet supplémentaire sur le disque).
+- 📄 **Copie réelle en option** : une case à cocher, propre à chaque jeu, force la copie des fichiers au lieu des hard links.
 - 🛡️ **Non destructif** : les fichiers originaux du jeu sont sauvegardés (`.org`) puis restaurés lors de la purge.
 - 🧹 **Purge en un clic** : retire tous les mods et remet le jeu dans son état d'origine.
 - 🕹️ **Interface « gaming »** : thème sombre aux accents néon, journal façon terminal.
@@ -78,15 +79,24 @@ Cliquez sur **🚀 DÉPLOYER LES MODS**. Le journal affiche chaque étape (purge
 
 > Vous pouvez redéployer à tout moment : ModInjector purge toujours le jeu avant de réinjecter la liste actuelle.
 
+#### Forcer la copie réelle des fichiers
+Sous les boutons de déploiement, la case **Forcer la copie réelle des fichiers (au lieu des hard links)** est mémorisée pour chaque jeu. Cochée, ModInjector copie réellement les fichiers des mods dans le jeu :
+
+- le jeu peut alors se trouver **sur un autre disque** que ModInjector ;
+- si le jeu modifie un fichier injecté, le fichier du mod dans la bibliothèque **n'est pas touché** ;
+- en contrepartie, le déploiement est plus lent et **occupe de l'espace disque** (taille des mods).
+
+Le changement s'applique au prochain déploiement.
+
 ### 5. Revenir au jeu d'origine
 Cliquez sur **🧹 PURGER (JEU D'ORIGINE)** puis confirmez. Tous les fichiers injectés sont supprimés et les originaux restaurés.
 
 ## ⚠️ Limitations
 
 - **Windows uniquement.**
-- **ModInjector et le jeu doivent être sur le même disque** (même lettre de lecteur), car les hard links ne fonctionnent pas entre disques. Sinon, déplacez le dossier ModInjector sur le disque du jeu.
+- **ModInjector et le jeu doivent être sur le même disque** (même lettre de lecteur), car les hard links ne fonctionnent pas entre disques. Sinon, déplacez le dossier ModInjector sur le disque du jeu, ou cochez **Forcer la copie réelle des fichiers**.
 - Si un hard link échoue, ModInjector se rabat automatiquement sur une copie classique.
-- Un fichier injecté par hard link **est** le fichier du mod : si le jeu le modifie sur place, le mod est modifié aussi. ModInjector le signale lors de la purge ; réinstallez alors le mod concerné. Un fichier **remplacé** par une mise à jour du jeu est, lui, détecté et conservé lors de la purge.
+- Un fichier injecté par hard link **est** le fichier du mod : si le jeu le modifie sur place, le mod est modifié aussi. ModInjector le signale lors de la purge ; réinstallez alors le mod concerné (ou utilisez la copie réelle pour ce jeu). Un fichier **remplacé** par une mise à jour du jeu est, lui, détecté et conservé lors de la purge.
 - **Fermez le jeu avant de déployer ou de purger** : un fichier utilisé par le jeu ne peut pas être supprimé. La purge est alors partielle, ModInjector garde la liste de ce qui reste à faire et il suffit de relancer la purge.
 - Si le dernier déploiement a été interrompu (plantage, coupure de courant), un avertissement s'affiche : lancez une purge puis redéployez.
 - Pensez à **purger le jeu avant de supprimer un jeu** de ModInjector ou de désinstaller le jeu.
