@@ -6,10 +6,9 @@ from pathlib import Path
 from tkinter import messagebox
 
 import customtkinter as ctk
-
 import theme
 from core.config import ConfigManager
-from core.deployer import deploy_mods, purge_mods, get_deployed_mods, is_deploy_interrupted
+from core.deployer import deploy_mods, get_deployed_mods, is_deploy_interrupted, purge_mods
 
 POLL_INTERVAL_MS = 2000
 LOG_INTERVAL_MS = 100
@@ -48,15 +47,31 @@ class ModsTab(ctk.CTkFrame):
         top.grid_columnconfigure(1, weight=1)
 
         theme.section_label(top, "Jeu :").grid(row=0, column=0, padx=10, pady=10)
-        self.combo_jeu = ctk.CTkComboBox(top, variable=self.game_var, values=[AUCUN_JEU],
-                                         state="readonly", command=self.on_game_selected)
+        self.combo_jeu = ctk.CTkComboBox(
+            top, variable=self.game_var, values=[AUCUN_JEU], state="readonly", command=self.on_game_selected
+        )
         self.combo_jeu.grid(row=0, column=1, padx=5, pady=10, sticky="ew")
-        btn_refresh = ctk.CTkButton(top, text="🔄 Rafraîchir", width=110, command=self.refresh,
-                                    fg_color="transparent", border_width=1, border_color=theme.CYAN,
-                                    hover_color=theme.PANEL_ALT)
+        btn_refresh = ctk.CTkButton(
+            top,
+            text="🔄 Rafraîchir",
+            width=110,
+            command=self.refresh,
+            fg_color="transparent",
+            border_width=1,
+            border_color=theme.CYAN,
+            hover_color=theme.PANEL_ALT,
+        )
         btn_refresh.grid(row=0, column=2, padx=5, pady=10)
-        ctk.CTkButton(top, text="📂 Ouvrir Mods", width=110, command=self.open_mods_folder,
-                      fg_color="transparent", border_width=1, border_color=theme.CYAN, hover_color=theme.PANEL_ALT).grid(row=0, column=3, padx=(5, 10), pady=10)
+        ctk.CTkButton(
+            top,
+            text="📂 Ouvrir Mods",
+            width=110,
+            command=self.open_mods_folder,
+            fg_color="transparent",
+            border_width=1,
+            border_color=theme.CYAN,
+            hover_color=theme.PANEL_ALT,
+        ).grid(row=0, column=3, padx=(5, 10), pady=10)
         self._action_widgets += [self.combo_jeu, btn_refresh]
 
         # --- Gestion du Load Order ---
@@ -74,11 +89,19 @@ class ModsTab(ctk.CTkFrame):
         frame_transfer.grid(row=1, column=1, padx=5)
         btn_activer = ctk.CTkButton(frame_transfer, text="Activer ►", width=90, command=self.activate_mod)
         btn_activer.pack(pady=5)
-        btn_retirer = ctk.CTkButton(frame_transfer, text="◄ Retirer", width=90, command=self.deactivate_mod,
-                                    fg_color=theme.DANGER_SOFT, hover_color=theme.DANGER_SOFT_HOVER)
+        btn_retirer = ctk.CTkButton(
+            frame_transfer,
+            text="◄ Retirer",
+            width=90,
+            command=self.deactivate_mod,
+            fg_color=theme.DANGER_SOFT,
+            hover_color=theme.DANGER_SOFT_HOVER,
+        )
         btn_retirer.pack(pady=5)
 
-        theme.section_label(frame_mods, "Ordre de déploiement (plus bas = prioritaire)").grid(row=0, column=2, pady=(10, 5))
+        theme.section_label(frame_mods, "Ordre de déploiement (plus bas = prioritaire)").grid(
+            row=0, column=2, pady=(10, 5)
+        )
         self.list_active = self._make_listbox(frame_mods)
         self.list_active.grid(row=1, column=2, padx=5, pady=(0, 15), sticky="nsew")
 
@@ -93,19 +116,42 @@ class ModsTab(ctk.CTkFrame):
         frame_actions = ctk.CTkFrame(self)
         frame_actions.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
         frame_actions.grid_columnconfigure((0, 1), weight=1)
-        btn_deploy = ctk.CTkButton(frame_actions, text="🚀 DÉPLOYER LES MODS", command=self.action_deploy,
-                                   fg_color=theme.SUCCESS, hover_color=theme.SUCCESS_HOVER, height=48,
-                                   font=theme.font(15, "bold"))
+        btn_deploy = ctk.CTkButton(
+            frame_actions,
+            text="🚀 DÉPLOYER LES MODS",
+            command=self.action_deploy,
+            fg_color=theme.SUCCESS,
+            hover_color=theme.SUCCESS_HOVER,
+            height=48,
+            font=theme.font(15, "bold"),
+        )
         btn_deploy.grid(row=0, column=0, padx=15, pady=(15, 8), sticky="ew")
-        btn_purge = ctk.CTkButton(frame_actions, text="🧹 PURGER (JEU D'ORIGINE)", command=self.action_purge,
-                                  fg_color=theme.DANGER, hover_color=theme.DANGER_HOVER, height=48,
-                                  font=theme.font(15, "bold"))
+        btn_purge = ctk.CTkButton(
+            frame_actions,
+            text="🧹 PURGER (JEU D'ORIGINE)",
+            command=self.action_purge,
+            fg_color=theme.DANGER,
+            hover_color=theme.DANGER_HOVER,
+            height=48,
+            font=theme.font(15, "bold"),
+        )
         btn_purge.grid(row=0, column=1, padx=15, pady=(15, 8), sticky="ew")
-        self.chk_copie = ctk.CTkCheckBox(frame_actions, variable=self.copie_var, command=self.on_copie_toggled,
-                                         text="Forcer la copie réelle des fichiers (au lieu des hard links)")
+        self.chk_copie = ctk.CTkCheckBox(
+            frame_actions,
+            variable=self.copie_var,
+            command=self.on_copie_toggled,
+            text="Forcer la copie réelle des fichiers (au lieu des hard links)",
+        )
         self.chk_copie.grid(row=1, column=0, columnspan=2, padx=15, pady=(0, 12), sticky="w")
-        self._action_widgets += [btn_activer, btn_retirer, btn_monter, btn_descendre, btn_deploy, btn_purge,
-                                 self.chk_copie]
+        self._action_widgets += [
+            btn_activer,
+            btn_retirer,
+            btn_monter,
+            btn_descendre,
+            btn_deploy,
+            btn_purge,
+            self.chk_copie,
+        ]
 
         # --- Logs ---
         frame_logs = ctk.CTkFrame(self)
@@ -209,7 +255,9 @@ class ModsTab(ctk.CTkFrame):
         elif deployed == self.load_order:
             texte = f"✔ À jour : {len(deployed)} mod(s) déployé(s)."
         else:
-            texte = f"⏳ Modifications en attente ({len(deployed)} mod(s) actuellement déployé(s)) : cliquez sur Déployer."
+            texte = (
+                f"⏳ Modifications en attente ({len(deployed)} mod(s) actuellement déployé(s)) : cliquez sur Déployer."
+            )
         self.lbl_status.configure(text=texte)
 
     def _save_order(self):
@@ -367,9 +415,11 @@ class ModsTab(ctk.CTkFrame):
         if not dossier_jeu.exists():
             messagebox.showerror("Erreur", "Le dossier du jeu spécifié n'existe pas.")
             return
-        if not messagebox.askyesno("Confirmation de Purge",
-                                   f"Voulez-vous vraiment retirer tous les mods de « {jeu['nom']} » "
-                                   "et restaurer le jeu à son état d'origine ?"):
+        if not messagebox.askyesno(
+            "Confirmation de Purge",
+            f"Voulez-vous vraiment retirer tous les mods de « {jeu['nom']} » "
+            "et restaurer le jeu à son état d'origine ?",
+        ):
             return
 
         def tache():
