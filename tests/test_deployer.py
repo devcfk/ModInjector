@@ -241,3 +241,35 @@ def test_mod_introuvable_ignore(env):
     assert deploy_mods(jeu, mods, ["Fantome", "ModA"], logs)
     assert logs.contient("introuvable")
     assert get_deployed_mods(jeu) == ["ModA"]
+
+
+def test_copie_forcee_n_utilise_pas_de_hard_link(env, monkeypatch):
+    jeu, mods = env
+    avant = snapshot(jeu)
+    def interdit(*_args):
+        raise AssertionError("os.link ne doit pas être appelé")
+    monkeypatch.setattr(deployer.os, "link", interdit)
+
+    logs = Logs()
+    assert deploy_mods(jeu, mods, ["ModA", "ModB"], logs, copie_forcee=True)
+    cible = jeu / "config" / "game.ini"
+    assert cible.read_text(encoding="utf-8") == "B"
+    assert not os.path.samefile(cible, mods / "ModB" / "config" / "game.ini")
+    assert {info["mode"] for info in read_state(jeu)["injected"].values()} == {"copy"}
+    assert not logs.contient("Hard link échoué")
+
+    assert purge_mods(jeu, Logs())
+    assert snapshot(jeu) == avant
+
+
+def test_copie_forcee_autorise_un_autre_disque(env, monkeypatch):
+    jeu, mods = env
+    monkeypatch.setattr(deployer, "is_same_drive", lambda *_args: False)
+
+    logs = Logs()
+    assert not deploy_mods(jeu, mods, ["ModB"], logs)
+    assert logs.contient("Forcer la copie réelle")
+    assert get_deployed_mods(jeu) == []
+
+    assert deploy_mods(jeu, mods, ["ModB"], Logs(), copie_forcee=True)
+    assert (jeu / "config" / "game.ini").read_text(encoding="utf-8") == "B"

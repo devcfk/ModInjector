@@ -31,7 +31,7 @@ class ConfigManager:
 
     Format de config.json :
     {
-        "jeux": [{"nom": "...", "dossier": "...", "load_order": ["ModA", ...]}],
+        "jeux": [{"nom": "...", "dossier": "...", "load_order": ["ModA", ...], "copie_forcee": false}],
         "jeu_actif": "..."
     }
     Les mods de chaque jeu sont rangés dans Mods/<nom du jeu>/<mod>.
@@ -63,6 +63,7 @@ class ConfigManager:
                         "nom": str(j.get("nom", "")),
                         "dossier": str(j.get("dossier", "")),
                         "load_order": [str(m) for m in j.get("load_order", [])],
+                        "copie_forcee": bool(j.get("copie_forcee", False)),
                     }
                     for j in data["jeux"]
                     if isinstance(j, dict) and j.get("nom")
@@ -100,7 +101,8 @@ class ConfigManager:
         """Ancien format : un seul jeu (dossier_jeu) et des mods directement dans Mods/."""
         dossier = data["dossier_jeu"]
         nom = Path(dossier).name or "Jeu"
-        self.jeux = [{"nom": nom, "dossier": dossier, "load_order": list(data.get("load_order", []))}]
+        self.jeux = [{"nom": nom, "dossier": dossier, "load_order": list(data.get("load_order", [])),
+                      "copie_forcee": False}]
         self.jeu_actif_nom = nom
 
         # Déplace les mods existants (Mods/<mod>) vers Mods/<jeu>/<mod>
@@ -146,7 +148,7 @@ class ConfigManager:
             return "Un jeu portant ce nom existe déjà."
         if not dossier or not Path(dossier).is_dir():
             return "Le dossier du jeu n'existe pas."
-        self.jeux.append({"nom": nom, "dossier": dossier, "load_order": []})
+        self.jeux.append({"nom": nom, "dossier": dossier, "load_order": [], "copie_forcee": False})
         self.mods_dir(nom).mkdir(parents=True, exist_ok=True)
         if not self.jeu_actif_nom:
             self.jeu_actif_nom = nom
@@ -194,4 +196,11 @@ class ConfigManager:
         jeu = self.get_jeu(nom)
         if jeu is not None:
             jeu["load_order"] = list(load_order)
+            self.save()
+
+    def set_copie_forcee(self, nom: str, active: bool) -> None:
+        """Copie réelle des fichiers au lieu de hard links lors des déploiements de ce jeu."""
+        jeu = self.get_jeu(nom)
+        if jeu is not None:
+            jeu["copie_forcee"] = bool(active)
             self.save()

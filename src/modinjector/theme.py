@@ -83,5 +83,9 @@ def apply():
     t["CTkTextbox"].update(corner_radius=4, fg_color=[INPUT, INPUT], text_color=[TEXT, TEXT],
                            scrollbar_button_color=[BORDER, BORDER],
                            scrollbar_button_hover_color=[PRIMARY, PRIMARY])
+    t["CTkCheckBox"].update(corner_radius=4, border_width=2, fg_color=[PRIMARY, PRIMARY],
+                            hover_color=[PRIMARY_HOVER, PRIMARY_HOVER], border_color=[CYAN, CYAN],
+                            checkmark_color=["white", "white"], text_color=[TEXT, TEXT],
+                            text_color_disabled=[TEXT_MUTED, TEXT_MUTED])
     t["CTkScrollbar"].update(button_color=[BORDER, BORDER], button_hover_color=[PRIMARY, PRIMARY])
     t["CTkFont"].update(family=FONT_FAMILY, size=13)

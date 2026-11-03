@@ -24,6 +24,7 @@ class ModsTab(ctk.CTkFrame):
         super().__init__(master, fg_color="transparent", border_width=0)
         self.cfg = cfg
         self.game_var = ctk.StringVar(value=AUCUN_JEU)
+        self.copie_var = ctk.BooleanVar(value=False)  # copie réelle au lieu de hard links (par jeu)
         self.load_order: list[str] = []
         self.available_mods: list[str] = []
         self._snapshot = None
@@ -95,12 +96,16 @@ class ModsTab(ctk.CTkFrame):
         btn_deploy = ctk.CTkButton(frame_actions, text="🚀 DÉPLOYER LES MODS", command=self.action_deploy,
                                    fg_color=theme.SUCCESS, hover_color=theme.SUCCESS_HOVER, height=48,
                                    font=theme.font(15, "bold"))
-        btn_deploy.grid(row=0, column=0, padx=15, pady=15, sticky="ew")
+        btn_deploy.grid(row=0, column=0, padx=15, pady=(15, 8), sticky="ew")
         btn_purge = ctk.CTkButton(frame_actions, text="🧹 PURGER (JEU D'ORIGINE)", command=self.action_purge,
                                   fg_color=theme.DANGER, hover_color=theme.DANGER_HOVER, height=48,
                                   font=theme.font(15, "bold"))
-        btn_purge.grid(row=0, column=1, padx=15, pady=15, sticky="ew")
-        self._action_widgets += [btn_activer, btn_retirer, btn_monter, btn_descendre, btn_deploy, btn_purge]
+        btn_purge.grid(row=0, column=1, padx=15, pady=(15, 8), sticky="ew")
+        self.chk_copie = ctk.CTkCheckBox(frame_actions, variable=self.copie_var, command=self.on_copie_toggled,
+                                         text="Forcer la copie réelle des fichiers (au lieu des hard links)")
+        self.chk_copie.grid(row=1, column=0, columnspan=2, padx=15, pady=(0, 12), sticky="w")
+        self._action_widgets += [btn_activer, btn_retirer, btn_monter, btn_descendre, btn_deploy, btn_purge,
+                                 self.chk_copie]
 
         # --- Logs ---
         frame_logs = ctk.CTkFrame(self)
@@ -145,6 +150,8 @@ class ModsTab(ctk.CTkFrame):
         jeu = self._jeu()
         self.game_var.set(jeu["nom"] if jeu else AUCUN_JEU)
 
+        self.copie_var.set(bool(jeu and jeu.get("copie_forcee")))
+        self.chk_copie.configure(state="normal" if jeu else "disabled")
         if jeu is None:
             self.load_order, self.available_mods = [], []
             self.update_listboxes()
@@ -215,6 +222,11 @@ class ModsTab(ctk.CTkFrame):
     def on_game_selected(self, nom: str):
         self.cfg.set_jeu_actif(nom)
         self.refresh()
+
+    def on_copie_toggled(self):
+        jeu = self._jeu()
+        if jeu:
+            self.cfg.set_copie_forcee(jeu["nom"], self.copie_var.get())
 
     def open_mods_folder(self):
         if self._jeu() is None:
@@ -334,11 +346,14 @@ class ModsTab(ctk.CTkFrame):
             return
 
         mods_dir, load_order = self._mods_dir(), list(self.load_order)
+        copie_forcee = bool(jeu.get("copie_forcee"))
 
         def tache():
             self.log("=== LANCEMENT DU DÉPLOIEMENT ===")
             self.log(f"Jeu cible : {jeu['nom']} ({dossier_jeu})")
-            deploy_mods(dossier_jeu, mods_dir, load_order, logger=self.log)
+            if copie_forcee:
+                self.log("Mode : copie réelle des fichiers (hard links désactivés)")
+            deploy_mods(dossier_jeu, mods_dir, load_order, logger=self.log, copie_forcee=copie_forcee)
 
         self._run_task("Déploiement", tache)
 

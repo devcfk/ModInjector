@@ -109,9 +109,17 @@ class SettingsTab(ctk.CTkFrame):
 
         lignes = ["── JEU ──"]
         lignes.append(f"Dossier du jeu               : {'✔ trouvé' if dossier.exists() else '✘ INTROUVABLE'}")
+        copie = bool(jeu.get("copie_forcee"))
+        lignes.append(f"Mode d'injection             : {'copie réelle forcée' if copie else 'hard links (sans copie)'}")
         if dossier.exists():
             meme = is_same_drive(dossier, mods_dir)
-            lignes.append(f"Même disque                  : {'✔ oui (hard links possibles)' if meme else '✘ NON — déplacez ModInjector sur le disque du jeu'}")
+            if meme:
+                texte = "✔ oui (hard links possibles)"
+            elif copie:
+                texte = "✘ non (sans conséquence : copie réelle forcée)"
+            else:
+                texte = "✘ NON — déplacez ModInjector sur le disque du jeu ou forcez la copie réelle"
+            lignes.append(f"Même disque                  : {texte}")
         lignes.append(f"Mods dans le jeu             : {len(deployed)} déployé(s)" if deployed else "Mods dans le jeu             : aucun (jeu d'origine)")
         if dossier.exists() and is_deploy_interrupted(dossier):
             lignes.append("État du déploiement          : ⚠ interrompu ou illisible — purgez le jeu puis redéployez")

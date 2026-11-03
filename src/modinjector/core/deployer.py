@@ -256,8 +256,11 @@ def purge_mods(dossier_jeu: Path, logger=print) -> bool:
     return True
 
 # -------------------------------------------------------------------------- Déploiement
-def _inject_file(dossier_jeu: Path, rel: Path, source: Path, etat: dict, logger) -> bool:
-    """Injecte un fichier dans le jeu (sauvegarde de l'original, hard link ou copie). Met à jour l'état."""
+def _inject_file(dossier_jeu: Path, rel: Path, source: Path, etat: dict, logger, copie_forcee: bool = False) -> bool:
+    """
+    Injecte un fichier dans le jeu (sauvegarde de l'original, hard link ou copie). Met à jour l'état.
+    copie_forcee : copie réelle du fichier au lieu d'un hard link.
+    """
     cible = dossier_jeu / rel
 
     # 1. Sauvegarde de l'original sous un nom libre (jamais d'écrasement d'une sauvegarde existante)
@@ -282,16 +285,18 @@ def _inject_file(dossier_jeu: Path, rel: Path, source: Path, etat: dict, logger)
         return False
 
     # 3. Injection du fichier
-    mode = "link"
-    try:
-        # os.link crée le Hard Link vers la source. L'injection est instantanée et prend 0 octet.
-        os.link(source, cible)
-    except OSError as e:
-        # Fallback de secours (Copie classique)
-        logger(f"[ATTENTION] Hard link échoué pour {cible.name}, copie standard activée... ({e})")
+    mode = "copy"
+    if not copie_forcee:
+        try:
+            # os.link crée le Hard Link vers la source. L'injection est instantanée et prend 0 octet.
+            os.link(source, cible)
+            mode = "link"
+        except OSError as e:
+            # Fallback de secours (Copie classique)
+            logger(f"[ATTENTION] Hard link échoué pour {cible.name}, copie standard activée... ({e})")
+    if mode == "copy":
         try:
             shutil.copy2(source, cible)
-            mode = "copy"
         except OSError as ex:
             logger(f"[ERREUR CRITIQUE] Impossible d'injecter {cible.name} : {ex}")
             try:
@@ -304,17 +309,20 @@ def _inject_file(dossier_jeu: Path, rel: Path, source: Path, etat: dict, logger)
     logger(f"[{'INJECTÉ' if mode == 'link' else 'COPIÉ'}] {cible.name} (Source: {source.parent.name})")
     return True
 
-def deploy_mods(dossier_jeu: Path, dossier_mods_racine: Path, load_order: list[str], logger=print) -> bool:
+def deploy_mods(dossier_jeu: Path, dossier_mods_racine: Path, load_order: list[str], logger=print,
+                copie_forcee: bool = False) -> bool:
     """
     Déploie les mods en respectant l'ordre de priorité (load_order).
     load_order = ["Mod1", "Mod2"] -> Mod2 est prioritaire et écrase Mod1 si conflit.
+    copie_forcee : copie réelle des fichiers au lieu de hard links (le jeu peut alors être sur un autre disque).
     L'état est enregistré au fil de l'eau : même interrompu, le déploiement reste purgeable.
     """
-    if not is_same_drive(dossier_jeu, dossier_mods_racine):
+    if not copie_forcee and not is_same_drive(dossier_jeu, dossier_mods_racine):
         logger(f"[ERREUR CRITIQUE] Le jeu et ModInjector NE SONT PAS sur le même disque !")
         logger(f"  -> Disque du Jeu : {dossier_jeu.resolve().drive}")
         logger(f"  -> Disque de ModInjector : {dossier_mods_racine.resolve().drive}")
-        logger("Veuillez déplacer le dossier entier de ModInjector sur le MÊME disque que votre jeu.")
+        logger("Veuillez déplacer le dossier entier de ModInjector sur le MÊME disque que votre jeu,")
+        logger("ou activez l'option « Forcer la copie réelle des fichiers ».")
         return False
 
     # Toujours purger avant de redéployer
@@ -343,7 +351,7 @@ def deploy_mods(dossier_jeu: Path, dossier_mods_racine: Path, load_order: list[s
         logger("[INFO] Aucun fichier de mod à déployer.")
         return True
 
-    logger("\n--- ÉTAPE 3 : Déploiement des Hard Links ---")
+    logger("\n--- ÉTAPE 3 : Déploiement " + ("des copies (copie réelle forcée) ---" if copie_forcee else "des Hard Links ---"))
     etat = {
         "version": STATE_VERSION,
         "deployed_mods": mods_trouves,
@@ -360,7 +368,7 @@ def deploy_mods(dossier_jeu: Path, dossier_mods_racine: Path, load_order: list[s
     erreurs = 0
     try:
         for i, (rel_path, source_path) in enumerate(final_files_map.items(), start=1):
-            if not _inject_file(dossier_jeu, rel_path, source_path, etat, logger):
+            if not _inject_file(dossier_jeu, rel_path, source_path, etat, logger, copie_forcee):
                 erreurs += 1
             if i % SAVE_EVERY == 0:
                 _save_state(dossier_jeu, etat)

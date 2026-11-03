@@ -37,3 +37,23 @@ def test_config_de_type_inattendu(tmp_path):
     fichier.write_text(json.dumps(["pas", "un", "objet"]), encoding="utf-8")
     cfg = ConfigManager(fichier, tmp_path / "Mods")
     assert cfg.jeux == [] and cfg.erreur_chargement
+
+
+def test_copie_forcee_par_jeu(tmp_path):
+    jeu = tmp_path / "jeu"
+    jeu.mkdir()
+    cfg = ConfigManager(tmp_path / "data" / "config.json", tmp_path / "Mods")
+    assert cfg.ajouter_jeu("Mon Jeu", str(jeu)) is None
+    assert cfg.get_jeu("Mon Jeu")["copie_forcee"] is False
+    cfg.set_copie_forcee("Mon Jeu", True)
+    assert cfg.modifier_jeu("Mon Jeu", "Jeu Renommé", str(jeu)) is None
+
+    relu = ConfigManager(tmp_path / "data" / "config.json", tmp_path / "Mods")
+    assert relu.get_jeu("Jeu Renommé")["copie_forcee"] is True
+
+
+def test_copie_forcee_absente_d_une_ancienne_config(tmp_path):
+    config = tmp_path / "data" / "config.json"
+    config.parent.mkdir()
+    config.write_text(json.dumps({"jeux": [{"nom": "Ancien", "dossier": "x", "load_order": []}]}), encoding="utf-8")
+    assert ConfigManager(config, tmp_path / "Mods").get_jeu("Ancien")["copie_forcee"] is False
