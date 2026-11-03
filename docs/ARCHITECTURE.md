@@ -265,7 +265,7 @@ Le build local (`uv run python scripts/build.py`) reste possible pour tester l'e
 | Versionné | Ignoré (`.gitignore`) |
 |---|---|
 | `src/`, `scripts/`, `assets/`, `docs/`, `tests/sandbox` (fichiers factices) | `.venv/`, `__pycache__/` |
-| `pyproject.toml`, `uv.lock`, `README.md` | `build/`, `dist/`, `livraison/`, `*.spec` |
+| `pyproject.toml`, `uv.lock`, `README.md` (anglais), `README.fr.md` | `build/`, `dist/`, `livraison/`, `*.spec` |
 | `.gitignore`, `.gitattributes`, `.editorconfig`, `.github/`, `.vscode/extensions.json` | `data/`, `Mods/` (données utilisateur) |
 |  | `.idea/`, `.vscode/*`, `.mod_manager/`, `*.org` |
 

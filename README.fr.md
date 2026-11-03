@@ -1,5 +1,7 @@
 # ModInjector
 
+🇬🇧 [English version](README.md)
+
 [![CI](https://github.com/devcfk/ModInjector/actions/workflows/ci.yml/badge.svg)](https://github.com/devcfk/ModInjector/actions/workflows/ci.yml)
 
 **ModInjector** est un gestionnaire de mods simple et non destructif pour jeux vidéo sous **Windows**.
