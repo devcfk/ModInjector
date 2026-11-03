@@ -2,7 +2,7 @@
 
 🇫🇷 [Version française](README.fr.md)
 
-[![CI](https://github.com/devcfk/ModInjector/actions/workflows/ci.yml/badge.svg)](https://github.com/devcfk/ModInjector/actions/workflows/ci.yml)
+[![CI](https://github.com/devcfk/ModInjector/actions/workflows/ci.yml/badge.svg)](https://github.com/devcfk/ModInjector/actions/workflows/ci.yml) [![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20me-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/devcfk)
 
 **ModInjector** is a simple, non-destructive mod manager for **Windows** games.
 Organize your mods, choose their load order, inject them into your game in one click — and **restore the original game** just as easily.
@@ -137,6 +137,14 @@ uv run python src/modinjector/main.py
 ```
 
 Tests: `uv run pytest` — lint and formatting: `uv run ruff check .` / `uv run ruff format .` (checked automatically by GitHub CI).
+
+## ☕ Support the project
+
+ModInjector is free, with no ads and no tracking, and will stay that way. If it saved you some time and you feel like encouraging my work, you can buy me a coffee on Ko-fi: every small donation helps me keep improving it. Thank you! 🎮
+
+[![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/devcfk)
+
+You can also find a **☕ Support me on Ko-fi** link at the bottom of the application window.
 
 ## 📄 License
 

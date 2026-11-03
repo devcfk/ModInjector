@@ -5,6 +5,7 @@
     "app.busy_close": "Un déploiement ou une purge est en cours.\nAttendez la fin avant de fermer ModInjector.",
     "app.busy_settings": "Attendez la fin du déploiement ou de la purge en cours.",
     "app.config_title": "Configuration",
+    "app.support": "☕ Me soutenir sur Ko-fi",
     "tab.mods": "Mods",
     "tab.settings": "Paramètres",
     "common.error": "Erreur",

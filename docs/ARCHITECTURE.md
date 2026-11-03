@@ -85,6 +85,7 @@ flowchart TD
   - `on_close` prevents closing the window during a deployment or a purge; the language cannot be changed either.
   - `on_language_selected` saves the language, cancels the window's pending Tk timers (otherwise they would fire on destroyed widgets), then closes the window so that `run()` rebuilds it.
   - If `config.json` could not be read, a warning says where it was set aside.
+  - The footer shows a "☕ Support me on Ko-fi" link (`DONATE_URL`, opened with `webbrowser`) and the version.
 - `resource_path()`: returns `sys._MEIPASS` (PyInstaller executable) or the project root during development.
 
 ### 4.2 `i18n.py` — translations
