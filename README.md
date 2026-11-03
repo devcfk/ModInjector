@@ -1,138 +1,142 @@
 # ModInjector
 
+🇫🇷 [Version française](README.fr.md)
+
 [![CI](https://github.com/devcfk/ModInjector/actions/workflows/ci.yml/badge.svg)](https://github.com/devcfk/ModInjector/actions/workflows/ci.yml)
 
-**ModInjector** est un gestionnaire de mods simple et non destructif pour jeux vidéo sous **Windows**.
-Il vous permet de ranger vos mods, de choisir leur ordre de priorité, puis de les injecter dans votre jeu en un clic — et de **restaurer le jeu d'origine** tout aussi facilement.
+**ModInjector** is a simple, non-destructive mod manager for **Windows** games.
+Organize your mods, choose their load order, inject them into your game in one click — and **restore the original game** just as easily.
 
-![Onglet Mods de ModInjector](docs/images/06_mods_deploye.png)
+![ModInjector Mods tab](docs/images/06_mods_deploye.png)
 
-📘 **Nouveau venu ?** Le [manuel utilisateur illustré](docs/Manuel_utilisateur_ModInjector.docx) (Word) vous guide pas à pas.
+> 🌐 The user interface is currently in **French**. An English interface is planned. In this guide, button labels are shown in French with their English meaning.
 
-## ✨ Fonctionnalités
+📘 **New here?** The illustrated [user manual](docs/Manuel_utilisateur_ModInjector.docx) (Word, in French) walks you through it step by step.
 
-- 🎮 **Multi-jeux** : gérez plusieurs jeux, chacun avec sa propre bibliothèque de mods.
-- 📚 **Bibliothèque de mods** : déposez vos mods dans un dossier, ModInjector les détecte automatiquement.
-- 🔢 **Ordre de chargement (load order)** : en cas de conflit entre deux mods, celui placé le plus bas dans la liste est prioritaire.
-- ⚡ **Injection instantanée** : utilise des *hard links* (aucune copie, 0 octet supplémentaire sur le disque).
-- 📄 **Copie réelle en option** : une case à cocher, propre à chaque jeu, force la copie des fichiers au lieu des hard links.
-- 🛡️ **Non destructif** : les fichiers originaux du jeu sont sauvegardés (`.org`) puis restaurés lors de la purge.
-- 🧹 **Purge en un clic** : retire tous les mods et remet le jeu dans son état d'origine.
-- 🕹️ **Interface « gaming »** : thème sombre aux accents néon, journal façon terminal.
+## ✨ Features
+
+- 🎮 **Multiple games**: manage several games, each with its own mod library.
+- 📚 **Mod library**: drop your mods into a folder and ModInjector detects them automatically.
+- 🔢 **Load order**: when two mods conflict, the one lower in the list wins.
+- ⚡ **Instant injection**: uses *hard links* (no copy, 0 extra bytes on disk).
+- 📄 **Optional real copy**: a per-game checkbox forces real file copies instead of hard links.
+- 🛡️ **Non-destructive**: original game files are backed up (`.org`) and restored on purge.
+- 🧹 **One-click purge**: removes every mod and puts the game back in its original state.
+- 🕹️ **Gaming UI**: dark theme with neon accents and a terminal-style log.
 
 ## 📥 Installation
 
-1. Téléchargez la dernière version `ModInjector.zip` depuis la page [Releases](https://github.com/devcfk/ModInjector/releases).
-2. Extrayez l'archive **sur le même disque que votre jeu** (voir [Limitations](#️-limitations)).
-3. Lancez `ModInjector.exe`.
+1. Download the latest `ModInjector.zip` from the [Releases](https://github.com/devcfk/ModInjector/releases) page.
+2. Extract the archive **on the same drive as your game** (see [Limitations](#️-limitations)).
+3. Run `ModInjector.exe`.
 
-Le dossier extrait contient :
+The extracted folder contains:
 
 ```
 ModInjector/
 ├── ModInjector.exe
-├── Mods/      ← vos mods (un sous-dossier par jeu)
-└── data/      ← configuration (config.json)
+├── Mods/      ← your mods (one subfolder per game)
+└── data/      ← settings (config.json)
 ```
 
-Aucune installation de Python n'est nécessaire.
+No Python installation is required.
 
-## 🚀 Utilisation
+## 🚀 Usage
 
-### 1. Ajouter un jeu
-1. Ouvrez l'onglet **Paramètres**.
-2. Cliquez sur **➕ Nouveau jeu**, saisissez un nom et sélectionnez le **dossier racine du jeu** (bouton *Parcourir*).
-3. Cliquez sur **💾 Enregistrer**.
+### 1. Add a game
+1. Open the **Paramètres** (*Settings*) tab.
+2. Click **➕ Nouveau jeu** (*New game*), enter a name and select the **game's root folder** (*Parcourir* / *Browse* button).
+3. Click **💾 Enregistrer** (*Save*).
 
-La fiche d'information vous indique si le dossier est trouvé et si le jeu est sur le même disque que ModInjector.
+The info panel tells you whether the folder was found and whether the game is on the same drive as ModInjector.
 
-![Fiche d'un jeu dans l'onglet Paramètres](docs/images/03_parametres_fiche_jeu.png)
+![Game details in the Settings tab](docs/images/03_parametres_fiche_jeu.png)
 
-### 2. Ajouter des mods
-1. Dans l'onglet **Mods**, cliquez sur **📂 Ouvrir Mods** : le dossier `Mods/<nom du jeu>/` s'ouvre.
-2. Déposez-y chaque mod **dans son propre sous-dossier**. Ce sous-dossier doit reproduire l'arborescence du jeu :
+### 2. Add mods
+1. In the **Mods** tab, click **📂 Ouvrir Mods** (*Open Mods*): the `Mods/<game name>/` folder opens.
+2. Put each mod **in its own subfolder**. That subfolder must mirror the game's folder structure:
 
 ```
-Mods/MonJeu/
-└── MonSuperMod/
+Mods/MyGame/
+└── MyAwesomeMod/
     └── Content/
         └── Paks/
-            └── mon_mod.pak     →  sera injecté dans <dossier du jeu>/Content/Paks/mon_mod.pak
+            └── my_mod.pak     →  injected as <game folder>/Content/Paks/my_mod.pak
 ```
 
-La liste se met à jour automatiquement (ou via **🔄 Rafraîchir**).
+The list refreshes automatically (or via **🔄 Rafraîchir** / *Refresh*).
 
-### 3. Choisir et ordonner les mods
-- Sélectionnez un mod dans la **Bibliothèque** et cliquez sur **Activer ►**.
-- Utilisez **▲ Monter / ▼ Descendre** pour définir l'ordre.
-- ⚠️ **Plus bas = prioritaire** : si deux mods modifient le même fichier, celui du bas l'emporte.
+### 3. Pick and order your mods
+- Select a mod in the **Bibliothèque** (*Library*) and click **Activer ►** (*Enable*).
+- Use **▲ Monter / ▼ Descendre** (*Move up / Move down*) to set the order.
+- ⚠️ **Lower = higher priority**: if two mods change the same file, the lower one wins.
 
-Légende de la liste de déploiement :
+Deployment list legend:
 
-| Symbole | Signification |
-|---------|---------------|
-| ✔ | Mod déjà déployé dans le jeu |
-| ⏳ | Mod dans la liste, en attente de déploiement |
+| Symbol | Meaning |
+|--------|---------|
+| ✔ | Mod already deployed in the game |
+| ⏳ | Mod in the list, waiting to be deployed |
 
-![Liste de déploiement en attente](docs/images/05_mods_ordre.png)
+![Pending deployment list](docs/images/05_mods_ordre.png)
 
-### 4. Déployer
-Cliquez sur **🚀 DÉPLOYER LES MODS**. Le journal affiche chaque étape (purge préalable, calcul des conflits, injection).
+### 4. Deploy
+Click **🚀 DÉPLOYER LES MODS** (*Deploy mods*). The log shows every step (prior purge, conflict resolution, injection).
 
-> Vous pouvez redéployer à tout moment : ModInjector purge toujours le jeu avant de réinjecter la liste actuelle.
+> You can redeploy at any time: ModInjector always purges the game before injecting the current list.
 
-#### Forcer la copie réelle des fichiers
-Sous les boutons de déploiement, la case **Forcer la copie réelle des fichiers (au lieu des hard links)** est mémorisée pour chaque jeu. Cochée, ModInjector copie réellement les fichiers des mods dans le jeu :
+#### Force real file copies
+Below the deploy buttons, the **Forcer la copie réelle des fichiers** (*Force real file copy instead of hard links*) checkbox is saved per game. When checked, ModInjector really copies the mod files into the game:
 
-- le jeu peut alors se trouver **sur un autre disque** que ModInjector ;
-- si le jeu modifie un fichier injecté, le fichier du mod dans la bibliothèque **n'est pas touché** ;
-- en contrepartie, le déploiement est plus lent et **occupe de l'espace disque** (taille des mods).
+- the game can then live **on a different drive** than ModInjector;
+- if the game modifies an injected file, the mod's file in your library **is not affected**;
+- on the other hand, deployment is slower and **uses disk space** (the size of the mods).
 
-Le changement s'applique au prochain déploiement.
+The change applies on the next deployment.
 
-### 5. Revenir au jeu d'origine
-Cliquez sur **🧹 PURGER (JEU D'ORIGINE)** puis confirmez. Tous les fichiers injectés sont supprimés et les originaux restaurés.
+### 5. Restore the original game
+Click **🧹 PURGER (JEU D'ORIGINE)** (*Purge – original game*) and confirm. Every injected file is removed and the originals are restored.
 
 ## ⚠️ Limitations
 
-- **Windows uniquement.**
-- **ModInjector et le jeu doivent être sur le même disque** (même lettre de lecteur), car les hard links ne fonctionnent pas entre disques. Sinon, déplacez le dossier ModInjector sur le disque du jeu, ou cochez **Forcer la copie réelle des fichiers**.
-- Si un hard link échoue, ModInjector se rabat automatiquement sur une copie classique.
-- Un fichier injecté par hard link **est** le fichier du mod : si le jeu le modifie sur place, le mod est modifié aussi. ModInjector le signale lors de la purge ; réinstallez alors le mod concerné (ou utilisez la copie réelle pour ce jeu). Un fichier **remplacé** par une mise à jour du jeu est, lui, détecté et conservé lors de la purge.
-- **Fermez le jeu avant de déployer ou de purger** : un fichier utilisé par le jeu ne peut pas être supprimé. La purge est alors partielle, ModInjector garde la liste de ce qui reste à faire et il suffit de relancer la purge.
-- Si le dernier déploiement a été interrompu (plantage, coupure de courant), un avertissement s'affiche : lancez une purge puis redéployez.
-- Pensez à **purger le jeu avant de supprimer un jeu** de ModInjector ou de désinstaller le jeu.
-- Les jeux protégés par un anti-triche peuvent refuser les fichiers modifiés : utilisez ModInjector à vos risques.
+- **Windows only.**
+- **ModInjector and the game must be on the same drive** (same drive letter), because hard links don't work across drives. Otherwise, move the ModInjector folder to the game's drive, or check **Force real file copy**.
+- If a hard link fails, ModInjector automatically falls back to a regular copy.
+- A file injected through a hard link **is** the mod's file: if the game modifies it in place, the mod is modified too. ModInjector reports it during the purge; reinstall the affected mod (or use real copies for that game). A file **replaced** by a game update, however, is detected and kept during the purge.
+- **Close the game before deploying or purging**: a file in use by the game can't be deleted. The purge is then partial; ModInjector remembers what is left to do and you just need to run the purge again.
+- If the last deployment was interrupted (crash, power loss), a warning is shown: run a purge, then redeploy.
+- Remember to **purge the game before removing it** from ModInjector or uninstalling it.
+- Games protected by anti-cheat software may reject modified files: use ModInjector at your own risk.
 
 ## ❓ FAQ
 
-**Où sont stockés mes mods et ma configuration ?**
-Dans les dossiers `Mods/` et `data/config.json` situés à côté de `ModInjector.exe`.
+**Where are my mods and settings stored?**
+In the `Mods/` folder and `data/config.json`, next to `ModInjector.exe`.
 
-**Que se passe-t-il si je supprime un jeu de la liste ?**
-Le jeu et vos mods ne sont pas supprimés, seulement retirés de la configuration. Purgez d'abord si des mods sont encore déployés.
+**What happens if I remove a game from the list?**
+The game and your mods are not deleted, only removed from the settings. Purge first if mods are still deployed.
 
-**J'ai un fichier `.org` dans mon jeu, c'est normal ?**
-Oui : c'est la sauvegarde d'un fichier original remplacé par un mod. Il est renommé à son nom d'origine lors de la purge. Si un fichier `.org` existe déjà, la sauvegarde est nommée `.1.org`, `.2.org`… : une sauvegarde n'est jamais écrasée. Un `.org` peut rester après la purge si le jeu a entre-temps installé une version plus récente du fichier : c'est l'ancien original, vous pouvez le supprimer.
+**There's a `.org` file in my game folder, is that normal?**
+Yes: it's the backup of an original file replaced by a mod. It gets its original name back during the purge. If a `.org` file already exists, the backup is named `.1.org`, `.2.org`… : a backup is never overwritten. A `.org` file may remain after the purge if the game installed a newer version of the file in the meantime: it's the old original, and you can delete it.
 
 ## 📘 Documentation
 
-- [Manuel utilisateur](docs/Manuel_utilisateur_ModInjector.docx) (Word, illustré de captures d'écran).
-- [Documentation technique](docs/ARCHITECTURE.md).
+- [User manual](docs/Manuel_utilisateur_ModInjector.docx) (Word, in French, with screenshots).
+- [Technical documentation](docs/ARCHITECTURE.md) (in French).
 
-## 🛠️ Pour les développeurs
+## 🛠️ For developers
 
-Voir la [documentation technique](docs/ARCHITECTURE.md) (architecture, fonctionnement du déploiement, build, contribution).
+See the [technical documentation](docs/ARCHITECTURE.md) (architecture, how deployment works, build, contributing).
 
-Lancement rapide depuis les sources (nécessite [uv](https://docs.astral.sh/uv/) et Python ≥ 3.14) :
+Run from source (requires [uv](https://docs.astral.sh/uv/) and Python ≥ 3.14):
 
 ```powershell
 uv sync
 uv run python src/modinjector/main.py
 ```
 
-Tests automatisés : `uv run pytest` — lint et formatage : `uv run ruff check .` / `uv run ruff format .` (vérifiés automatiquement par la CI GitHub).
+Tests: `uv run pytest` — lint and formatting: `uv run ruff check .` / `uv run ruff format .` (checked automatically by GitHub CI).
 
-## 📄 Licence
+## 📄 License
 
-Ce projet est distribué sous licence [MIT](LICENSE) : vous pouvez l'utiliser, le modifier et le redistribuer librement, y compris à titre commercial, à condition de conserver la mention de copyright.
+This project is released under the [MIT](LICENSE) license: you may use, modify and redistribute it freely, including commercially, as long as you keep the copyright notice.
