@@ -1,5 +1,6 @@
 import os
 import sys
+import webbrowser
 from tkinter import messagebox
 
 import customtkinter as ctk
@@ -10,6 +11,8 @@ from i18n import t
 from version import __version__
 from views.mods_tab import ModsTab
 from views.settings_tab import SettingsTab
+
+DONATE_URL = "https://ko-fi.com/devcfk"
 
 
 def resource_path(relative_path):
@@ -80,8 +83,22 @@ class App(ctk.CTk):
         self.settings_view.grid(row=0, column=0, sticky="nsew")
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        ctk.CTkLabel(self, text=f"v{__version__}", text_color=theme.TEXT_MUTED, font=theme.font(10)).grid(
-            row=2, column=0, sticky="e", padx=20, pady=(0, 8)
+        # --- Footer: donation link + version ---
+        footer = ctk.CTkFrame(self, fg_color="transparent", border_width=0)
+        footer.grid(row=2, column=0, sticky="ew", padx=15, pady=(2, 6))
+        ctk.CTkButton(
+            footer,
+            text=t("app.support"),
+            command=lambda: webbrowser.open(DONATE_URL),
+            fg_color="transparent",
+            hover_color=theme.PANEL_ALT,
+            text_color=theme.CYAN,
+            font=theme.font(11),
+            width=0,
+            height=24,
+        ).pack(side="left")
+        ctk.CTkLabel(footer, text=f"v{__version__}", text_color=theme.TEXT_MUTED, font=theme.font(10)).pack(
+            side="right", padx=(0, 5)
         )
 
         # First launch: no game configured -> open the settings tab directly
