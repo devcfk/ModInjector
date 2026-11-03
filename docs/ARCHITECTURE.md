@@ -45,7 +45,7 @@ ModInjector/
 └── docs/
     ├── ARCHITECTURE.md          # This document
     ├── Manuel_utilisateur_ModInjector.docx  # User manual (Word, French)
-    └── images/                  # Screenshots (README, manual)
+    └── images/                  # Screenshots: French (manual, README.fr) and en/ (README)
 ```
 
 > Imports are relative to the `src/modinjector` folder (`from core.config import ...`), configured through pyright's `extraPaths`, pytest's `pythonpath`, and by running the script from that folder / PyInstaller.
@@ -299,10 +299,11 @@ A local build (`uv run python scripts/build.py`) is still possible to test the e
 ## 7. User documentation
 
 - `docs/Manuel_utilisateur_ModInjector.docx`: step-by-step manual for end users (French).
-- `docs/images/`: screenshots used by the manual and the README.
+- `docs/images/`: French screenshots, used by the manual and `README.fr.md`.
+- `docs/images/en/`: English screenshots, used by `README.md`.
 
 Screenshots are taken with **fictitious demo data** (games "Nebula Commander" and "Turbo Racer", drive `X:`) so that no personal path or name is exposed. After a visible UI change, retake the screenshots under the same conditions and update the manual.
 
 ## 8. Ideas for improvement
 - Progress bar while deploying large mods.
-- English version of the user manual and of the screenshots.
+- English version of the user manual.

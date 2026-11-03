@@ -7,9 +7,9 @@
 **ModInjector** is a simple, non-destructive mod manager for **Windows** games.
 Organize your mods, choose their load order, inject them into your game in one click — and **restore the original game** just as easily.
 
-![ModInjector Mods tab](docs/images/06_mods_deploye.png)
+![ModInjector Mods tab](docs/images/en/mods_deployed.png)
 
-> 🌐 The interface is available in **English** and **French**. It follows the Windows display language; you can change it at any time with the 🌐 selector at the top right of the window. The screenshots below show the French interface.
+> 🌐 The interface is available in **English** and **French**. It follows the Windows display language; you can change it at any time with the 🌐 selector at the top right of the window.
 
 📘 **New here?** The illustrated [user manual](docs/Manuel_utilisateur_ModInjector.docx) (Word, in French) walks you through it step by step.
 
@@ -51,7 +51,7 @@ No Python installation is required.
 
 The info panel tells you whether the folder was found and whether the game is on the same drive as ModInjector.
 
-![Game details in the Settings tab](docs/images/03_parametres_fiche_jeu.png)
+![Game details in the Settings tab](docs/images/en/settings_game_details.png)
 
 ### 2. Add mods
 1. In the **Mods** tab, click **📂 Open Mods**: the `Mods/<game name>/` folder opens.
@@ -79,7 +79,7 @@ Deployment list legend:
 | ✔ | Mod already deployed in the game |
 | ⏳ | Mod in the list, waiting to be deployed |
 
-![Pending deployment list](docs/images/05_mods_ordre.png)
+![Pending deployment list](docs/images/en/mods_order.png)
 
 ### 4. Deploy
 Click **🚀 DEPLOY MODS**. The log shows every step (prior purge, conflict resolution, injection).
