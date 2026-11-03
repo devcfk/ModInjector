@@ -1,5 +1,7 @@
 {
     "recommendations": [
-        "ms-python.vscode-python-envs"
+        "ms-python.vscode-python-envs",
+        "charliermarsh.ruff",
+        "editorconfig.editorconfig"
     ]
 }

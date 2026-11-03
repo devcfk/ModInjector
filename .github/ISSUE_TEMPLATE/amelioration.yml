@@ -1,0 +1,15 @@
+name: 💡 Amélioration
+description: Proposer une nouvelle fonctionnalité
+labels: [enhancement]
+body:
+  - type: textarea
+    id: besoin
+    attributes:
+      label: Quel besoin ?
+      description: Quel problème cette fonctionnalité résoudrait-elle ?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solution envisagée
