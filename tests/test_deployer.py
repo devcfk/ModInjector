@@ -10,212 +10,210 @@ class Logs(list):
     def __call__(self, message=""):
         self.append(str(message))
 
-    def contient(self, texte: str) -> bool:
-        return any(texte in ligne for ligne in self)
+    def contains(self, text: str) -> bool:
+        return any(text in line for line in self)
 
 
-def ecrire(chemin, contenu: str):
-    chemin.parent.mkdir(parents=True, exist_ok=True)
-    chemin.write_text(contenu, encoding="utf-8")
+def write(path, content: str):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
 
 
 @pytest.fixture
 def env(tmp_path):
-    """Un jeu avec deux fichiers d'origine et deux mods en conflit sur config/game.ini."""
-    jeu, mods = tmp_path / "jeu", tmp_path / "Mods"
-    ecrire(jeu / "config" / "game.ini", "original")
-    ecrire(jeu / "textures" / "hero.tex", "hero original")
-    ecrire(mods / "ModA" / "config" / "game.ini", "A")
-    ecrire(mods / "ModA" / "textures" / "new.tex", "nouveau A")
-    ecrire(mods / "ModB" / "config" / "game.ini", "B")
-    ecrire(mods / "ModB" / "modinfo.json", "{}")
-    return jeu, mods
+    """Un game avec deux fichiers d'origine et deux mods en conflit sur config/game.ini."""
+    game, mods = tmp_path / "game", tmp_path / "Mods"
+    write(game / "config" / "game.ini", "original")
+    write(game / "textures" / "hero.tex", "hero original")
+    write(mods / "ModA" / "config" / "game.ini", "A")
+    write(mods / "ModA" / "textures" / "new.tex", "new A")
+    write(mods / "ModB" / "config" / "game.ini", "B")
+    write(mods / "ModB" / "modinfo.json", "{}")
+    return game, mods
 
 
-def snapshot(dossier):
-    return {
-        str(p.relative_to(dossier)): p.read_text(encoding="utf-8") for p in sorted(dossier.rglob("*")) if p.is_file()
-    }
+def snapshot(folder):
+    return {str(p.relative_to(folder)): p.read_text(encoding="utf-8") for p in sorted(folder.rglob("*")) if p.is_file()}
 
 
-def test_deploiement_puis_purge_restaure_le_jeu(env):
-    jeu, mods = env
-    avant = snapshot(jeu)
+def test_deploy_then_purge_restores_game(env):
+    game, mods = env
+    before = snapshot(game)
 
-    assert deploy_mods(jeu, mods, ["ModA", "ModB"], Logs())
-    assert (jeu / "config" / "game.ini").read_text(encoding="utf-8") == "B"  # le dernier mod gagne
-    assert os.path.samefile(jeu / "config" / "game.ini", mods / "ModB" / "config" / "game.ini")
-    assert (jeu / "textures" / "new.tex").read_text(encoding="utf-8") == "nouveau A"
-    assert not (jeu / "modinfo.json").exists()
-    assert get_deployed_mods(jeu) == ["ModA", "ModB"]
-    assert not is_deploy_interrupted(jeu)
+    assert deploy_mods(game, mods, ["ModA", "ModB"], Logs())
+    assert (game / "config" / "game.ini").read_text(encoding="utf-8") == "B"  # the last mod wins
+    assert os.path.samefile(game / "config" / "game.ini", mods / "ModB" / "config" / "game.ini")
+    assert (game / "textures" / "new.tex").read_text(encoding="utf-8") == "new A"
+    assert not (game / "modinfo.json").exists()
+    assert get_deployed_mods(game) == ["ModA", "ModB"]
+    assert not is_deploy_interrupted(game)
 
-    assert purge_mods(jeu, Logs())
-    assert snapshot(jeu) == avant
-    assert not (jeu / ".mod_manager").exists()
-    assert (mods / "ModB" / "config" / "game.ini").read_text(encoding="utf-8") == "B"  # les mods sont intacts
-
-
-def test_redeploiement_idempotent(env):
-    jeu, mods = env
-    avant = snapshot(jeu)
-    assert deploy_mods(jeu, mods, ["ModA"], Logs())
-    assert deploy_mods(jeu, mods, ["ModB", "ModA"], Logs())
-    assert (jeu / "config" / "game.ini").read_text(encoding="utf-8") == "A"
-    assert purge_mods(jeu, Logs())
-    assert snapshot(jeu) == avant
+    assert purge_mods(game, Logs())
+    assert snapshot(game) == before
+    assert not (game / ".mod_manager").exists()
+    assert (mods / "ModB" / "config" / "game.ini").read_text(encoding="utf-8") == "B"  # mods are untouched
 
 
-def test_purge_sur_jeu_propre_ne_cree_rien(env):
-    jeu, _ = env
-    assert purge_mods(jeu, Logs())
-    assert not (jeu / ".mod_manager").exists()
+def test_redeploy_is_idempotent(env):
+    game, mods = env
+    before = snapshot(game)
+    assert deploy_mods(game, mods, ["ModA"], Logs())
+    assert deploy_mods(game, mods, ["ModB", "ModA"], Logs())
+    assert (game / "config" / "game.ini").read_text(encoding="utf-8") == "A"
+    assert purge_mods(game, Logs())
+    assert snapshot(game) == before
 
 
-def test_fichier_org_preexistant_jamais_ecrase(env):
-    jeu, mods = env
-    ecrire(jeu / "config" / "game.ini.org", "fichier .org livré avec le jeu")
-    avant = snapshot(jeu)
-
-    assert deploy_mods(jeu, mods, ["ModB"], Logs())
-    assert (jeu / "config" / "game.ini.org").read_text(encoding="utf-8") == "fichier .org livré avec le jeu"
-    assert (jeu / "config" / "game.ini.1.org").read_text(encoding="utf-8") == "original"
-
-    assert purge_mods(jeu, Logs())
-    assert snapshot(jeu) == avant
+def test_purge_on_clean_game_creates_nothing(env):
+    game, _ = env
+    assert purge_mods(game, Logs())
+    assert not (game / ".mod_manager").exists()
 
 
-def test_fichier_remplace_par_le_jeu_est_conserve(env):
-    jeu, mods = env
-    assert deploy_mods(jeu, mods, ["ModB"], Logs())
-    cible = jeu / "config" / "game.ini"
-    cible.unlink()  # Une mise à jour du jeu remplace le fichier
-    ecrire(cible, "version patchée du jeu")
+def test_existing_org_file_is_never_overwritten(env):
+    game, mods = env
+    write(game / "config" / "game.ini.org", ".org file shipped with the game")
+    before = snapshot(game)
+
+    assert deploy_mods(game, mods, ["ModB"], Logs())
+    assert (game / "config" / "game.ini.org").read_text(encoding="utf-8") == ".org file shipped with the game"
+    assert (game / "config" / "game.ini.1.org").read_text(encoding="utf-8") == "original"
+
+    assert purge_mods(game, Logs())
+    assert snapshot(game) == before
+
+
+def test_file_replaced_by_game_is_kept(env):
+    game, mods = env
+    assert deploy_mods(game, mods, ["ModB"], Logs())
+    target = game / "config" / "game.ini"
+    target.unlink()  # A game update replaces the file
+    write(target, "patched game version")
 
     logs = Logs()
-    assert purge_mods(jeu, logs)
-    assert cible.read_text(encoding="utf-8") == "version patchée du jeu"
-    assert (jeu / "config" / "game.ini.org").read_text(encoding="utf-8") == "original"  # ancien original laissé de côté
-    assert logs.contient("[CONSERVÉ]")
+    assert purge_mods(game, logs)
+    assert target.read_text(encoding="utf-8") == "patched game version"
+    assert (game / "config" / "game.ini.org").read_text(encoding="utf-8") == "original"  # old original left aside
+    assert logs.contains("[CONSERVÉ]")
     assert (mods / "ModB" / "config" / "game.ini").read_text(encoding="utf-8") == "B"
 
 
-def test_modification_sur_place_signalee(env):
-    jeu, mods = env
-    assert deploy_mods(jeu, mods, ["ModB"], Logs())
-    cible = jeu / "config" / "game.ini"
-    with open(cible, "a", encoding="utf-8") as f:  # Écriture à travers le hard link
-        f.write(" + modifié par le jeu")
-    os.utime(cible, ns=(1, 1))
+def test_in_place_change_is_reported(env):
+    game, mods = env
+    assert deploy_mods(game, mods, ["ModB"], Logs())
+    target = game / "config" / "game.ini"
+    with open(target, "a", encoding="utf-8") as f:  # Write through the hard link
+        f.write(" + modified by the game")
+    os.utime(target, ns=(1, 1))
 
     logs = Logs()
-    assert purge_mods(jeu, logs)
-    assert logs.contient("modifié sur place")
-    assert cible.read_text(encoding="utf-8") == "original"
+    assert purge_mods(game, logs)
+    assert logs.contains("modifié sur place")
+    assert target.read_text(encoding="utf-8") == "original"
 
 
-def test_purge_partielle_conserve_l_etat(env, monkeypatch):
-    jeu, mods = env
-    assert deploy_mods(jeu, mods, ["ModA", "ModB"], Logs())
+def test_partial_purge_keeps_state(env, monkeypatch):
+    game, mods = env
+    assert deploy_mods(game, mods, ["ModA", "ModB"], Logs())
 
-    vrai_unlink = deployer._unlink
+    real_unlink = deployer._unlink
 
-    def unlink_verrouille(path):
+    def locked_unlink(path):
         if path.name == "game.ini":
-            raise PermissionError("fichier utilisé par le jeu")
-        vrai_unlink(path)
+            raise PermissionError("file used by the game")
+        real_unlink(path)
 
-    monkeypatch.setattr(deployer, "_unlink", unlink_verrouille)
+    monkeypatch.setattr(deployer, "_unlink", locked_unlink)
 
-    assert not purge_mods(jeu, Logs())
-    etat = read_state(jeu)
-    assert list(etat["injected"]) == [os.path.join("config", "game.ini")]
-    assert list(etat["backups"]) == [os.path.join("config", "game.ini")]
-    assert not deploy_mods(jeu, mods, ["ModA"], Logs())  # Redéploiement refusé tant que la purge échoue
+    assert not purge_mods(game, Logs())
+    state = read_state(game)
+    assert list(state["injected"]) == [os.path.join("config", "game.ini")]
+    assert list(state["backups"]) == [os.path.join("config", "game.ini")]
+    assert not deploy_mods(game, mods, ["ModA"], Logs())  # Redeploy refused while the purge fails
 
-    monkeypatch.setattr(deployer, "_unlink", vrai_unlink)
-    assert purge_mods(jeu, Logs())
-    assert (jeu / "config" / "game.ini").read_text(encoding="utf-8") == "original"
-    assert not (jeu / "textures" / "new.tex").exists()
+    monkeypatch.setattr(deployer, "_unlink", real_unlink)
+    assert purge_mods(game, Logs())
+    assert (game / "config" / "game.ini").read_text(encoding="utf-8") == "original"
+    assert not (game / "textures" / "new.tex").exists()
 
 
-def test_deploiement_interrompu_reste_purgeable(env, monkeypatch):
-    jeu, mods = env
-    avant = snapshot(jeu)
-    vrai_link, appels = os.link, []
+def test_interrupted_deployment_can_be_purged(env, monkeypatch):
+    game, mods = env
+    before = snapshot(game)
+    real_link, calls = os.link, []
 
-    def link_qui_plante(src, dst):
-        if appels:
-            raise RuntimeError("crash simulé")
-        appels.append(dst)
-        vrai_link(src, dst)
+    def crashing_link(src, dst):
+        if calls:
+            raise RuntimeError("simulated crash")
+        calls.append(dst)
+        real_link(src, dst)
 
-    monkeypatch.setattr(deployer.os, "link", link_qui_plante)
+    monkeypatch.setattr(deployer.os, "link", crashing_link)
 
     with pytest.raises(RuntimeError):
-        deploy_mods(jeu, mods, ["ModA"], Logs())
-    assert is_deploy_interrupted(jeu)
-    assert len(read_state(jeu)["injected"]) == 1
+        deploy_mods(game, mods, ["ModA"], Logs())
+    assert is_deploy_interrupted(game)
+    assert len(read_state(game)["injected"]) == 1
 
-    monkeypatch.setattr(deployer.os, "link", vrai_link)
-    assert purge_mods(jeu, Logs())
-    assert snapshot(jeu) == avant
-
-
-def test_echec_de_copie_restaure_l_original(env, monkeypatch):
-    jeu, mods = env
-    avant = snapshot(jeu)
-
-    def echec(*_args):
-        raise OSError("lien impossible")
-
-    monkeypatch.setattr(deployer.os, "link", echec)
-    monkeypatch.setattr(deployer.shutil, "copy2", echec)
-
-    assert not deploy_mods(jeu, mods, ["ModB"], Logs())
-    assert purge_mods(jeu, Logs())
-    assert snapshot(jeu) == avant
+    monkeypatch.setattr(deployer.os, "link", real_link)
+    assert purge_mods(game, Logs())
+    assert snapshot(game) == before
 
 
-def test_repli_sur_copie(env, monkeypatch):
-    jeu, mods = env
+def test_copy_failure_restores_original(env, monkeypatch):
+    game, mods = env
+    before = snapshot(game)
 
-    def echec(*_args):
-        raise OSError("lien impossible")
+    def fail(*_args):
+        raise OSError("link not possible")
 
-    monkeypatch.setattr(deployer.os, "link", echec)
+    monkeypatch.setattr(deployer.os, "link", fail)
+    monkeypatch.setattr(deployer.shutil, "copy2", fail)
 
-    assert deploy_mods(jeu, mods, ["ModB"], Logs())
-    cible = jeu / "config" / "game.ini"
-    assert cible.read_text(encoding="utf-8") == "B" and not os.path.samefile(
-        cible, mods / "ModB" / "config" / "game.ini"
+    assert not deploy_mods(game, mods, ["ModB"], Logs())
+    assert purge_mods(game, Logs())
+    assert snapshot(game) == before
+
+
+def test_falls_back_to_copy(env, monkeypatch):
+    game, mods = env
+
+    def fail(*_args):
+        raise OSError("link not possible")
+
+    monkeypatch.setattr(deployer.os, "link", fail)
+
+    assert deploy_mods(game, mods, ["ModB"], Logs())
+    target = game / "config" / "game.ini"
+    assert target.read_text(encoding="utf-8") == "B" and not os.path.samefile(
+        target, mods / "ModB" / "config" / "game.ini"
     )
-    assert purge_mods(jeu, Logs())
-    assert cible.read_text(encoding="utf-8") == "original"
+    assert purge_mods(game, Logs())
+    assert target.read_text(encoding="utf-8") == "original"
 
 
-def test_etat_illisible_bloque_sans_rien_toucher(env):
-    jeu, mods = env
-    avant = snapshot(jeu)
-    ecrire(state_path(jeu), "{ pas du json")
+def test_unreadable_state_blocks_without_touching_anything(env):
+    game, mods = env
+    before = snapshot(game)
+    write(state_path(game), "{ not json")
 
-    assert not purge_mods(jeu, Logs())
-    assert not deploy_mods(jeu, mods, ["ModA"], Logs())
-    assert is_deploy_interrupted(jeu)
-    assert get_deployed_mods(jeu) == []
-    apres = snapshot(jeu)
-    apres.pop(os.path.join(".mod_manager", "state.json"))
-    assert apres == avant
+    assert not purge_mods(game, Logs())
+    assert not deploy_mods(game, mods, ["ModA"], Logs())
+    assert is_deploy_interrupted(game)
+    assert get_deployed_mods(game) == []
+    after = snapshot(game)
+    after.pop(os.path.join(".mod_manager", "state.json"))
+    assert after == before
 
 
-def test_ancien_format_d_etat(env):
-    jeu, mods = env
-    avant = snapshot(jeu)
-    # Simule un déploiement fait par l'ancienne version (sans empreintes)
-    (jeu / "config" / "game.ini").rename(jeu / "config" / "game.ini.org")
-    os.link(mods / "ModB" / "config" / "game.ini", jeu / "config" / "game.ini")
-    ecrire(
-        state_path(jeu),
+def test_old_state_format(env):
+    game, mods = env
+    before = snapshot(game)
+    # Simulate a deployment made by the old version (no fingerprints)
+    (game / "config" / "game.ini").rename(game / "config" / "game.ini.org")
+    os.link(mods / "ModB" / "config" / "game.ini", game / "config" / "game.ini")
+    write(
+        state_path(game),
         json.dumps(
             {
                 "deployed_mods": ["ModB"],
@@ -225,67 +223,67 @@ def test_ancien_format_d_etat(env):
         ),
     )
 
-    assert get_deployed_mods(jeu) == ["ModB"]
-    assert purge_mods(jeu, Logs())
-    assert snapshot(jeu) == avant
+    assert get_deployed_mods(game) == ["ModB"]
+    assert purge_mods(game, Logs())
+    assert snapshot(game) == before
 
 
-def test_chemins_hors_du_jeu_ignores(env, tmp_path):
-    jeu, _ = env
-    victime = tmp_path / "victime.txt"
-    ecrire(victime, "à protéger")
-    ecrire(state_path(jeu), json.dumps({"deployed_mods": [], "injected": {"../victime.txt": {}}, "backups": {}}))
-
-    logs = Logs()
-    assert purge_mods(jeu, logs)
-    assert victime.exists()
-    assert logs.contient("hors du dossier du jeu")
-
-
-def test_dossier_mod_manager_dans_un_mod_ignore(env):
-    jeu, mods = env
-    ecrire(mods / "ModA" / ".mod_manager" / "state.json", "piège")
-    assert deploy_mods(jeu, mods, ["ModA"], Logs())
-    assert read_state(jeu)["deployed_mods"] == ["ModA"]
-
-
-def test_mod_introuvable_ignore(env):
-    jeu, mods = env
-    logs = Logs()
-    assert deploy_mods(jeu, mods, ["Fantome", "ModA"], logs)
-    assert logs.contient("introuvable")
-    assert get_deployed_mods(jeu) == ["ModA"]
-
-
-def test_copie_forcee_n_utilise_pas_de_hard_link(env, monkeypatch):
-    jeu, mods = env
-    avant = snapshot(jeu)
-
-    def interdit(*_args):
-        raise AssertionError("os.link ne doit pas être appelé")
-
-    monkeypatch.setattr(deployer.os, "link", interdit)
+def test_paths_outside_game_are_ignored(env, tmp_path):
+    game, _ = env
+    victim = tmp_path / "victim.txt"
+    write(victim, "must stay")
+    write(state_path(game), json.dumps({"deployed_mods": [], "injected": {"../victim.txt": {}}, "backups": {}}))
 
     logs = Logs()
-    assert deploy_mods(jeu, mods, ["ModA", "ModB"], logs, copie_forcee=True)
-    cible = jeu / "config" / "game.ini"
-    assert cible.read_text(encoding="utf-8") == "B"
-    assert not os.path.samefile(cible, mods / "ModB" / "config" / "game.ini")
-    assert {info["mode"] for info in read_state(jeu)["injected"].values()} == {"copy"}
-    assert not logs.contient("Hard link échoué")
-
-    assert purge_mods(jeu, Logs())
-    assert snapshot(jeu) == avant
+    assert purge_mods(game, logs)
+    assert victim.exists()
+    assert logs.contains("hors du dossier du jeu")
 
 
-def test_copie_forcee_autorise_un_autre_disque(env, monkeypatch):
-    jeu, mods = env
+def test_mod_manager_folder_inside_mod_is_ignored(env):
+    game, mods = env
+    write(mods / "ModA" / ".mod_manager" / "state.json", "trap")
+    assert deploy_mods(game, mods, ["ModA"], Logs())
+    assert read_state(game)["deployed_mods"] == ["ModA"]
+
+
+def test_missing_mod_is_skipped(env):
+    game, mods = env
+    logs = Logs()
+    assert deploy_mods(game, mods, ["Ghost", "ModA"], logs)
+    assert logs.contains("introuvable")
+    assert get_deployed_mods(game) == ["ModA"]
+
+
+def test_force_copy_uses_no_hard_link(env, monkeypatch):
+    game, mods = env
+    before = snapshot(game)
+
+    def forbidden(*_args):
+        raise AssertionError("os.link must not be called")
+
+    monkeypatch.setattr(deployer.os, "link", forbidden)
+
+    logs = Logs()
+    assert deploy_mods(game, mods, ["ModA", "ModB"], logs, force_copy=True)
+    target = game / "config" / "game.ini"
+    assert target.read_text(encoding="utf-8") == "B"
+    assert not os.path.samefile(target, mods / "ModB" / "config" / "game.ini")
+    assert {info["mode"] for info in read_state(game)["injected"].values()} == {"copy"}
+    assert not logs.contains("Hard link échoué")
+
+    assert purge_mods(game, Logs())
+    assert snapshot(game) == before
+
+
+def test_force_copy_allows_another_drive(env, monkeypatch):
+    game, mods = env
     monkeypatch.setattr(deployer, "is_same_drive", lambda *_args: False)
 
     logs = Logs()
-    assert not deploy_mods(jeu, mods, ["ModB"], logs)
-    assert logs.contient("Forcer la copie réelle")
-    assert get_deployed_mods(jeu) == []
+    assert not deploy_mods(game, mods, ["ModB"], logs)
+    assert logs.contains("Forcer la copie réelle")
+    assert get_deployed_mods(game) == []
 
-    assert deploy_mods(jeu, mods, ["ModB"], Logs(), copie_forcee=True)
-    assert (jeu / "config" / "game.ini").read_text(encoding="utf-8") == "B"
+    assert deploy_mods(game, mods, ["ModB"], Logs(), force_copy=True)
+    assert (game / "config" / "game.ini").read_text(encoding="utf-8") == "B"

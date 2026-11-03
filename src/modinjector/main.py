@@ -1,7 +1,7 @@
 import gui
 
 if __name__ == "__main__":
-    # Lance l'interface graphique
+    # Start the graphical interface
     import theme
 
     theme.apply()
